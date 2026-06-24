@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tracing — infy</title>
+  <meta name="description" content="Pluggable tracing with the Tracer protocol, @traced decorator, and custom observability in infy.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="header">
+    <div class="header-logo"><a href="index.html"><span>&#9650;</span> infy</a></div>
+    <nav class="header-nav">
+      <a href="getting-started.html" class="active">Docs</a>
+      <a href="api.html">API</a>
+      <a href="https://github.com">GitHub</a>
+    </nav>
+  </header>
+
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-title">Getting Started</div>
+      <a class="sidebar-link" href="getting-started.html">Installation</a>
+      <a class="sidebar-link" href="getting-started.html#quick-start">Quick Start</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-title">Core</div>
+      <a class="sidebar-link" href="core.html">Runnable &amp; Pipes</a>
+      <a class="sidebar-link" href="messages.html">Messages</a>
+      <a class="sidebar-link" href="streaming.html">Streaming</a>
+      <a class="sidebar-link active" href="tracing.html">Tracing</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-title">Building</div>
+      <a class="sidebar-link" href="tools.html">Tools</a>
+      <a class="sidebar-link" href="agents.html">Agents</a>
+      <a class="sidebar-link" href="memory.html">Memory</a>
+      <a class="sidebar-link" href="rag.html">RAG</a>
+      <a class="sidebar-link" href="graph.html">Graphs</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-title">Providers</div>
+      <a class="sidebar-link" href="providers.html">Overview</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-title">Reference</div>
+      <a class="sidebar-link" href="api.html">API Reference</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <h1>Tracing</h1>
+    <p>Pluggable observability with zero lock-in. Implement the <code>Tracer</code> protocol for any backend.</p>
+
+    <h2 id="protocol">Tracer Protocol</h2>
+    <p>Implement three methods to plug in any observability backend:</p>
+
+    <table>
+      <thead>
+        <tr><th>Method</th><th>Signature</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>on_start</code></td><td><code>(name, input, metadata?) &rarr; str</code></td><td>Called when a traced function starts. Returns a run ID.</td></tr>
+        <tr><td><code>on_end</code></td><td><code>(run_id, output, duration_ms) &rarr; None</code></td><td>Called on successful completion.</td></tr>
+        <tr><td><code>on_error</code></td><td><code>(run_id, error, duration_ms) &rarr; None</code></td><td>Called when an exception is raised.</td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="default">NoOpTracer</h2>
+    <p>The default tracer does nothing. Zero overhead when tracing is not configured:</p>
+
+    <div class="code-header">python</div>
+    <pre><code>from infy.tracing import NoOpTracer, get_tracer
+
+# Default tracer is NoOpTracer
+tracer = get_tracer()
+print(type(tracer))  # &lt;class 'infy.tracing.NoOpTracer'&gt;</code></pre>
+
+    <h2 id="decorator">@traced Decorator</h2>
+    <p>Trace any function (sync or async) with the <code>@traced</code> decorator:</p>
+
+    <div class="code-header">python</div>
+    <pre><code>from infy.tracing import traced
+
+@traced
+def my_function(x: int) -> int:
+    return x * 2
+
+@traced(name="custom_name")
+def another(x: int) -> int:
+    return x + 1
+
+# Works with async functions too
+@traced
+async def async_func(x: int) -> int:
+    await asyncio.sleep(0.1)
+    return x * 3</code></pre>
+
+    <h2 id="global">set_tracer / get_tracer</h2>
+    <p>Set a global tracer that applies to all <code>@traced</code> functions:</p>
+
+    <div class="code-header">python</div>
+    <pre><code>from infy.tracing import set_tracer, get_tracer
+
+# Set a custom tracer
+set_tracer(my_custom_tracer)
+
+# Later, get the current tracer
+tracer = get_tracer()</code></pre>
+
+    <h2 id="custom">Custom Tracer Example</h2>
+    <p>Implement a tracer that logs to stdout:</p>
+
+    <div class="code-header">python</div>
+    <pre><code>import time
+import uuid
+from infy.tracing import set_tracer
+
+class LoggingTracer:
+    """Simple tracer that logs to stdout."""
+
+    def on_start(self, name: str, input: Any, metadata: dict | None = None) -> str:
+        run_id = str(uuid.uuid4())[:8]
+        print(f"[{run_id}] START {name}")
+        return run_id
+
+    def on_end(self, run_id: str, output: Any, duration_ms: float) -> None:
+        print(f"[{run_id}] END ({duration_ms:.1f}ms)")
+
+    def on_error(self, run_id: str, error: Exception, duration_ms: float) -> None:
+        print(f"[{run_id}] ERROR ({duration_ms:.1f}ms): {error}")
+
+# Set it globally
+set_tracer(LoggingTracer())
+
+# Now all @traced functions will log
+@traced
+def process_data(data: str) -> str:
+    return data.upper()
+
+result = process_data("hello")
+# Output:
+# [a1b2c3d4] START process_data
+# [a1b2c3d4] END (0.1ms)</code></pre>
+
+    <h2>OpenTelemetry Example</h2>
+    <div class="code-header">python</div>
+    <pre><code>from opentelemetry import trace
+from infy.tracing import set_tracer
+
+tracer = trace.get_tracer("infy-app")
+
+class OTelTracer:
+    """OpenTelemetry integration."""
+
+    def on_start(self, name, input, metadata=None):
+        span = tracer.start_span(name)
+        return str(id(span))
+
+    def on_end(self, run_id, output, duration_ms):
+        # End the span
+        pass
+
+    def on_error(self, run_id, error, duration_ms):
+        # Record exception on span
+        pass
+
+set_tracer(OTelTracer())</code></pre>
+
+    <h2 id="comparison">Comparison with LangSmith</h2>
+    <table>
+      <thead>
+        <tr><th>Feature</th><th>infy Tracing</th><th>LangSmith</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Dependencies</td><td>0</td><td>langsmith SDK</td></tr>
+        <tr><td>Lock-in</td><td>None (pluggable)</td><td>LangSmith backend</td></tr>
+        <tr><td>Protocol</td><td>3 methods</td><td>Deep integration</td></tr>
+        <tr><td>Decorator</td><td><code>@traced</code></td><td>Callbacks</td></tr>
+        <tr><td>Async support</td><td>Native</td><td>Limited</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Complete Example</h2>
+    <div class="code-header">python</div>
+    <pre><code>import time
+import uuid
+from infy.tracing import traced, set_tracer, get_tracer
+
+class MetricsTracer:
+    """Collect timing metrics."""
+
+    def __init__(self):
+        self.calls = []
+
+    def on_start(self, name, input, metadata=None):
+        run_id = str(uuid.uuid4())[:8]
+        self.calls.append({"name": name, "run_id": run_id, "start": time.time()})
+        return run_id
+
+    def on_end(self, run_id, output, duration_ms):
+        for call in self.calls:
+            if call["run_id"] == run_id:
+                call["duration_ms"] = duration_ms
+                call["status"] = "ok"
+                break
+
+    def on_error(self, run_id, error, duration_ms):
+        for call in self.calls:
+            if call["run_id"] == run_id:
+                call["duration_ms"] = duration_ms
+                call["status"] = "error"
+                call["error"] = str(error)
+                break
+
+# Setup
+metrics = MetricsTracer()
+set_tracer(metrics)
+
+@traced
+def process(x: int) -> int:
+    time.sleep(0.01)
+    return x * 2
+
+@traced(name="batch_process")
+def batch(items: list) -> list:
+    return [process(item) for item in items]
+
+# Run
+result = batch([1, 2, 3, 4, 5])
+print(result)  # [2, 4, 6, 8, 10]
+
+# Inspect metrics
+for call in metrics.calls:
+    print(f"{call['name']}: {call.get('duration_ms', 0):.1f}ms ({call.get('status', 'ok')})")</code></pre>
+  </main>
+
+  <script src="js/docs.js"></script>
+</body>
+</html>

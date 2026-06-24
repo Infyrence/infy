@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Reference — infy</title>
+  <meta name="description" content="Complete API reference for all public classes and functions in infy.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="header">
+    <div class="header-logo"><a href="index.html"><span>&#9650;</span> infy</a></div>
+    <nav class="header-nav">
+      <a href="getting-started.html">Docs</a>
+      <a href="api.html" class="active">API</a>
+      <a href="https://github.com">GitHub</a>
+    </nav>
+  </header>
+
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-title">Getting Started</div>
+      <a class="sidebar-link" href="getting-started.html">Installation</a>
+      <a class="sidebar-link" href="getting-started.html#quick-start">Quick Start</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-title">Core</div>
+      <a class="sidebar-link" href="core.html">Runnable &amp; Pipes</a>
+      <a class="sidebar-link" href="messages.html">Messages</a>
+      <a class="sidebar-link" href="streaming.html">Streaming</a>
+      <a class="sidebar-link" href="tracing.html">Tracing</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-title">Building</div>
+      <a class="sidebar-link" href="tools.html">Tools</a>
+      <a class="sidebar-link" href="agents.html">Agents</a>
+      <a class="sidebar-link" href="memory.html">Memory</a>
+      <a class="sidebar-link" href="rag.html">RAG</a>
+      <a class="sidebar-link" href="graph.html">Graphs</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-title">Providers</div>
+      <a class="sidebar-link" href="providers.html">Overview</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-title">Reference</div>
+      <a class="sidebar-link active" href="api.html">API Reference</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <h1>API Reference</h1>
+    <p>Alphabetical listing of all public exports from <code>infy</code>. Version <strong>0.1.0</strong>.</p>
+
+    <div class="callout callout-info">All imports are from the top-level <code>infy</code> package unless noted. Example: <code>from infy import AIMessage</code>.</div>
+
+    <!-- ============================================================ -->
+    <!-- Core -->
+    <!-- ============================================================ -->
+    <h2 id="core">Core</h2>
+
+    <h3 id="runnable"><code>Runnable</code> <span class="badge badge-blue">Protocol</span></h3>
+    <p><strong>Module:</strong> <code>infy.core</code></p>
+    <p>The core protocol. Every composable unit implements this. Methods: <code>invoke</code>, <code>ainvoke</code>, <code>stream</code>, <code>astream</code>, <code>__or__</code>, <code>__ror__</code>.</p>
+    <pre><code>from infy.core import Runnable
+
+class MyRunnable:
+    def invoke(self, input, ctx=None): ...
+    async def ainvoke(self, input, ctx=None): ...
+    def stream(self, input, ctx=None): ...
+    async def astream(self, input, ctx=None): ...
+    def __or__(self, other): ...
+    def __ror__(self, other): ...</code></pre>
+
+    <h3 id="sequence"><code>Sequence</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.core</code></p>
+    <p>A chain of runnables executed in order. Created by the <code>|</code> pipe operator.</p>
+    <pre><code>from infy import Sequence, Lambda
+
+chain = Sequence([Lambda(str.upper), Lambda(str.strip)])
+result = chain.invoke("  hello  ")  # "HELLO"</code></pre>
+    <p><strong>Fields:</strong> <code>steps: list[Runnable]</code></p>
+
+    <h3 id="parallel"><code>Parallel</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.core</code></p>
+    <p>Execute multiple runnables concurrently on the same input. Returns a dict of results.</p>
+    <pre><code>from infy import Parallel, Lambda
+
+p = Parallel({"upper": Lambda(str.upper), "len": Lambda(len)})
+result = p.invoke("hello")  # {'upper': 'HELLO', 'len': 5}</code></pre>
+    <p><strong>Fields:</strong> <code>steps: dict[str, Runnable]</code></p>
+
+    <h3 id="lambda"><code>Lambda</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.core</code></p>
+    <p>Wrap a sync function as a Runnable.</p>
+    <pre><code>from infy import Lambda
+r = Lambda(lambda x: x * 2)
+print(r.invoke(5))  # 10</code></pre>
+    <p><strong>Fields:</strong> <code>func: Callable</code></p>
+
+    <h3 id="async-lambda"><code>AsyncLambda</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.core</code></p>
+    <p>Wrap an async function as a Runnable.</p>
+    <pre><code>from infy import AsyncLambda
+r = AsyncLambda(lambda x: x * 2)
+result = await r.ainvoke(5)  # 10</code></pre>
+    <p><strong>Fields:</strong> <code>func: Callable</code></p>
+
+    <h3 id="context"><code>Context</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.core</code></p>
+    <p>Execution context carrying tags, metadata, and concurrency settings.</p>
+    <pre><code>from infy.core import Context
+ctx = Context(tags=["prod"], metadata={"user": "123"}, max_concurrency=4)
+merged = ctx.merge(other_ctx)</code></pre>
+    <p><strong>Fields:</strong> <code>tags: list[str]</code>, <code>metadata: dict[str, Any]</code>, <code>max_concurrency: int | None</code></p>
+
+    <h3 id="coerce"><code>coerce</code> <span class="badge badge-purple">Function</span></h3>
+    <p><strong>Module:</strong> <code>infy.core</code></p>
+    <p>Convert a callable, dict, or Tool to a Runnable.</p>
+    <pre><code>from infy.core import coerce
+r = coerce(lambda x: x + 1)  # &rarr; Lambda
+r = coerce({"a": fn_a, "b": fn_b})  # &rarr; Parallel
+r = coerce(my_tool)  # &rarr; Runnable wrapper</code></pre>
+
+    <!-- ============================================================ -->
+    <!-- Messages -->
+    <!-- ============================================================ -->
+    <h2 id="messages-section">Messages</h2>
+
+    <h3 id="human-message"><code>HumanMessage</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.messages</code></p>
+    <p>User input message.</p>
+    <pre><code>from infy import HumanMessage
+msg = HumanMessage(content="Hello!")
+print(msg.text)  # "Hello!"
+print(msg.type)  # "human"</code></pre>
+    <p><strong>Fields:</strong> <code>content: str | list[ContentBlock]</code>, <code>name: str | None</code>, <code>id: str | None</code></p>
+
+    <h3 id="ai-message"><code>AIMessage</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.messages</code></p>
+    <p>Model output. May contain text, tool calls, or both.</p>
+    <pre><code>from infy import AIMessage, ToolCall, UsageMetadata
+msg = AIMessage(
+    content="Hello!",
+    tool_calls=[ToolCall(name="search", args={"q": "test"}, id="c1")],
+    usage=UsageMetadata(input_tokens=10, output_tokens=5),
+)
+print(msg.text)  # "Hello!"
+print(msg.has_tool_calls)  # True</code></pre>
+    <p><strong>Fields:</strong> <code>content</code>, <code>tool_calls: list[ToolCall]</code>, <code>usage: UsageMetadata | None</code>, <code>response_metadata: dict</code></p>
+
+    <h3 id="system-message"><code>SystemMessage</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.messages</code></p>
+    <p>System instruction for the model.</p>
+    <pre><code>from infy import SystemMessage
+msg = SystemMessage(content="You are helpful.")
+print(msg.text)  # "You are helpful."</code></pre>
+    <p><strong>Fields:</strong> <code>content: str | list[ContentBlock]</code>, <code>name: str | None</code></p>
+
+    <h3 id="tool-message"><code>ToolMessage</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.messages</code></p>
+    <p>Result of a tool execution.</p>
+    <pre><code>from infy import ToolMessage
+msg = ToolMessage(content="sunny, 72F", tool_call_id="c1")
+print(msg.type)  # "tool"</code></pre>
+    <p><strong>Fields:</strong> <code>content: str</code>, <code>tool_call_id: str</code>, <code>name: str | None</code>, <code>artifact: Any</code>, <code>status: str</code></p>
+
+    <h3 id="message-type"><code>Message</code> <span class="badge badge-blue">Type</span></h3>
+    <p><strong>Module:</strong> <code>infy.messages</code></p>
+    <p>Union type: <code>HumanMessage | AIMessage | SystemMessage | ToolMessage</code></p>
+
+    <h3 id="ai-message-chunk"><code>AIMessageChunk</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.messages</code></p>
+    <p>Streaming chunk. Merges additively via <code>__add__</code>.</p>
+    <pre><code>from infy import AIMessageChunk
+c1 = AIMessageChunk(content="Hello")
+c2 = AIMessageChunk(content=" world")
+full = c1 + c2  # "Hello world"
+msg = full.materialize()  # &rarr; AIMessage</code></pre>
+    <p><strong>Fields:</strong> <code>content</code>, <code>tool_call_chunks: list[ToolCallChunk]</code>, <code>usage: UsageMetadata | None</code></p>
+
+    <h3 id="tool-call"><code>ToolCall</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.messages</code></p>
+    <p>A tool call requested by the model.</p>
+    <pre><code>from infy import ToolCall
+tc = ToolCall(name="search", args={"query": "test"}, id="c1")
+print(tc.to_dict())  # {'name': 'search', 'args': {...}, 'id': 'c1'}</code></pre>
+    <p><strong>Fields:</strong> <code>name: str</code>, <code>args: dict[str, Any]</code>, <code>id: str</code></p>
+
+    <h3 id="tool-call-chunk"><code>ToolCallChunk</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.messages</code></p>
+    <p>A streaming chunk of a tool call. Merges by <code>index</code>.</p>
+    <p><strong>Fields:</strong> <code>name: str | None</code>, <code>args: str</code>, <code>id: str | None</code>, <code>index: int</code></p>
+
+    <h3 id="usage-metadata"><code>UsageMetadata</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.messages</code></p>
+    <p>Token usage from an API call. <code>total_tokens</code> is auto-calculated.</p>
+    <pre><code>from infy import UsageMetadata
+u = UsageMetadata(input_tokens=100, output_tokens=50)
+print(u.total_tokens)  # 150</code></pre>
+    <p><strong>Fields:</strong> <code>input_tokens: int</code>, <code>output_tokens: int</code>, <code>total_tokens: int</code></p>
+
+    <h3>Content Blocks</h3>
+    <p><strong>Module:</strong> <code>infy.messages</code></p>
+    <p><code>TextBlock</code>, <code>ImageBlock</code>, <code>ToolCallBlock</code>, <code>ToolResultBlock</code> &mdash; typed content for multimodal messages.</p>
+    <pre><code>from infy.messages import TextBlock, ImageBlock
+tb = TextBlock(text="Hello")
+ib = ImageBlock(url="https://...", mime_type="image/jpeg")</code></pre>
+
+    <!-- ============================================================ -->
+    <!-- Tools -->
+    <!-- ============================================================ -->
+    <h2 id="tools-section">Tools</h2>
+
+    <h3 id="tool-decorator"><code>tool</code> <span class="badge badge-purple">Decorator</span></h3>
+    <p><strong>Module:</strong> <code>infy.tools</code></p>
+    <p>Decorator to turn a function into a Tool. Works with sync and async functions.</p>
+    <pre><code>from infy import tool
+
+@tool
+def search(query: str) -> str:
+    """Search the web."""
+    return "results"
+
+@tool(name="custom_name")
+def my_func(x: int) -> int:
+    """A custom-named tool."""
+    return x * 2</code></pre>
+
+    <h3 id="tool-class"><code>Tool</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.tools</code></p>
+    <p>A callable tool with auto-generated schema.</p>
+    <pre><code>from infy.tools import Tool
+t = Tool(name="search", description="Search", func=my_func, args_schema={...})
+result = t.invoke({"query": "test"})
+result = await t.ainvoke({"query": "test"})
+schema = t.to_schema()  # &rarr; ToolSchema</code></pre>
+    <p><strong>Fields:</strong> <code>name: str</code>, <code>description: str</code>, <code>func: Callable</code>, <code>args_schema: dict</code></p>
+
+    <h3 id="tool-schema"><code>ToolSchema</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.models</code></p>
+    <p>JSON Schema for a tool, as sent to the LLM.</p>
+    <pre><code>from infy.models import ToolSchema
+s = ToolSchema(name="search", description="Search", parameters={...})
+d = s.to_dict()  # LLM-ready dict</code></pre>
+    <p><strong>Fields:</strong> <code>name: str</code>, <code>description: str</code>, <code>parameters: dict</code></p>
+
+    <!-- ============================================================ -->
+    <!-- Agents -->
+    <!-- ============================================================ -->
+    <h2 id="agents-section">Agents</h2>
+
+    <h3 id="create-agent"><code>create_agent</code> <span class="badge badge-purple">Function</span></h3>
+    <p><strong>Module:</strong> <code>infy.agents</code></p>
+    <p>Create a sync agent. Returns a callable.</p>
+    <pre><code>from infy import create_agent
+agent = create_agent(model, tools=[...], system_prompt="...", max_iterations=10)
+result = agent("Hello")  # &rarr; AgentResult</code></pre>
+    <p><strong>Params:</strong> <code>model: ChatModel</code>, <code>tools: list[Tool] | None</code>, <code>system_prompt: str | None</code>, <code>max_iterations: int = 10</code>, <code>parallel_tools: bool = True</code></p>
+
+    <h3 id="create-async-agent"><code>create_async_agent</code> <span class="badge badge-purple">Function</span></h3>
+    <p><strong>Module:</strong> <code>infy.agents</code></p>
+    <p>Create an async agent. Returns a coroutine.</p>
+    <pre><code>from infy import create_async_agent
+agent = create_async_agent(model, tools=[...])
+result = await agent("Hello")  # &rarr; AgentResult</code></pre>
+
+    <h3 id="agent-result"><code>AgentResult</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.agents</code></p>
+    <p>The output of an agent run.</p>
+    <pre><code>from infy.agents import AgentResult
+# Fields: messages, response, iterations, tool_calls_made</code></pre>
+    <p><strong>Fields:</strong> <code>messages: list[Message]</code>, <code>response: AIMessage</code>, <code>iterations: int</code>, <code>tool_calls_made: int</code></p>
+
+    <!-- ============================================================ -->
+    <!-- Memory -->
+    <!-- ============================================================ -->
+    <h2 id="memory-section">Memory</h2>
+
+    <h3 id="memory-protocol"><code>Memory</code> <span class="badge badge-blue">Protocol</span></h3>
+    <p><strong>Module:</strong> <code>infy.memory</code></p>
+    <p>Interface: <code>load_memory_variables()</code>, <code>save_context(input, output)</code>, <code>clear()</code></p>
+
+    <h3 id="buffer-memory"><code>BufferMemory</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.memory</code></p>
+    <p>Keeps all messages. No eviction.</p>
+    <pre><code>from infy import BufferMemory
+mem = BufferMemory(system_prompt="You are helpful.")
+mem.save_context(HumanMessage(content="Hi"), AIMessage(content="Hello!"))
+messages = mem.load_memory_variables()</code></pre>
+    <p><strong>Fields:</strong> <code>messages: list[Message]</code>, <code>system_prompt: str | None</code></p>
+
+    <h3 id="token-limited-memory"><code>TokenLimitedMemory</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.memory</code></p>
+    <p>Keeps messages within a token budget. Uses Rust token counting.</p>
+    <pre><code>from infy import TokenLimitedMemory
+mem = TokenLimitedMemory(max_tokens=4000)
+mem.save_context(...)
+messages = mem.load_memory_variables()  # only fits within budget</code></pre>
+    <p><strong>Fields:</strong> <code>max_tokens: int</code>, <code>messages: list[Message]</code>, <code>system_prompt: str | None</code></p>
+
+    <h3 id="summary-memory"><code>SummaryMemory</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.memory</code></p>
+    <p>Summarizes old messages using an LLM. Keeps recent messages in full.</p>
+    <pre><code>from infy import SummaryMemory
+mem = SummaryMemory(model=llm, buffer_size=6)
+mem.save_context(...)
+messages = mem.load_memory_variables()</code></pre>
+    <p><strong>Fields:</strong> <code>model: Any</code>, <code>buffer_size: int</code>, <code>messages: list[Message]</code>, <code>summary: str</code>, <code>system_prompt: str | None</code></p>
+
+    <!-- ============================================================ -->
+    <!-- RAG -->
+    <!-- ============================================================ -->
+    <h2 id="rag-section">RAG</h2>
+
+    <h3 id="document"><code>Document</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.documents</code></p>
+    <p>A piece of content with metadata. The unit of retrieval.</p>
+    <pre><code>from infy import Document
+doc = Document(page_content="Hello", metadata={"source": "test.md"})
+print(doc.id)  # auto UUID
+print(doc.to_dict())</code></pre>
+    <p><strong>Fields:</strong> <code>page_content: str</code>, <code>metadata: dict</code>, <code>id: str</code></p>
+
+    <h3 id="document-chunk"><code>DocumentChunk</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.documents</code></p>
+    <p>A chunk of a document with position info.</p>
+    <p><strong>Fields:</strong> <code>document: Document</code>, <code>chunk_index: int</code>, <code>total_chunks: int</code>, <code>start_char: int</code>, <code>end_char: int</code>, <code>id: str</code></p>
+
+    <h3 id="rag-chain"><code>RAGChain</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.rag</code></p>
+    <p>Complete RAG pipeline: retrieve &rarr; build prompt &rarr; generate.</p>
+    <pre><code>from infy import RAGChain
+rag = RAGChain(retriever=ret, model=llm, k=4)
+result = rag.invoke("What is infy?")
+print(result.response, result.source_documents)</code></pre>
+    <p><strong>Fields:</strong> <code>retriever</code>, <code>model</code>, <code>system_prompt: str</code>, <code>k: int</code>, <code>include_sources: bool</code></p>
+
+    <h3 id="rag-result"><code>RAGResult</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.rag</code></p>
+    <p><strong>Fields:</strong> <code>response: str</code>, <code>source_documents: list[Document]</code>, <code>query: str</code>, <code>usage: dict | None</code></p>
+
+    <!-- ============================================================ -->
+    <!-- Graph -->
+    <!-- ============================================================ -->
+    <h2 id="graph-section">Graph</h2>
+
+    <h3 id="state-graph"><code>StateGraph</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.graph</code></p>
+    <p>Build a stateful graph by adding nodes and edges.</p>
+    <pre><code>from infy.graph import StateGraph, START, END
+g = StateGraph(State)
+g.add_node("agent", agent_fn)
+g.add_edge(START, "agent")
+app = g.compile()</code></pre>
+
+    <h3 id="compiled-graph"><code>CompiledGraph</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.graph</code></p>
+    <p>Executable graph with checkpoint support.</p>
+    <pre><code>result = app.invoke(input, config={...})
+state = app.get_state(config)
+new_config = app.update_state(config, values)</code></pre>
+
+    <h3 id="in-memory-saver"><code>InMemorySaver</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.graph</code></p>
+    <p>In-memory checkpoint storage. Implements <code>BaseCheckpointSaver</code>.</p>
+    <pre><code>from infy.graph import InMemorySaver
+saver = InMemorySaver()
+app = graph.compile(checkpointer=saver)</code></pre>
+
+    <h3 id="channels">Channels</h3>
+    <p><strong>Module:</strong> <code>infy.graph</code></p>
+    <p><code>LastValue</code> &mdash; single value per key. <code>BinOp</code> &mdash; reducer accumulation. <code>Topic</code> &mdash; list accumulation.</p>
+    <pre><code>from infy.graph import LastValue, BinOp, Topic</code></pre>
+
+    <h3 id="types-section">Graph Types</h3>
+    <p><strong>Module:</strong> <code>infy.graph</code></p>
+    <p><code>START</code>, <code>END</code> &mdash; special node names. <code>Send</code> &mdash; fan-out dispatch. <code>Command</code> &mdash; navigation/update. <code>Interrupt</code> &mdash; pause for HITL. <code>StateSnapshot</code> &mdash; read-only state view.</p>
+    <pre><code>from infy.graph import START, END, Send, Command, Interrupt, StateSnapshot</code></pre>
+
+    <h3 id="create-graph-agent"><code>create_graph_agent</code> <span class="badge badge-purple">Function</span></h3>
+    <p><strong>Module:</strong> <code>infy.graph</code></p>
+    <p>Create a stateful graph-based agent with checkpointing.</p>
+    <pre><code>from infy.graph import create_graph_agent, InMemorySaver
+agent = create_graph_agent(
+    model, tools=[...], checkpointer=InMemorySaver(),
+    interrupt_before=["tools"],
+)
+result = agent.invoke(input, config={...})</code></pre>
+
+    <!-- ============================================================ -->
+    <!-- Providers -->
+    <!-- ============================================================ -->
+    <h2 id="providers-section">Providers</h2>
+
+    <h3 id="chat-model"><code>ChatModel</code> <span class="badge badge-blue">Protocol</span></h3>
+    <p><strong>Module:</strong> <code>infy.models</code></p>
+    <p>Interface for chat models. Methods: <code>generate</code>, <code>agenerate</code>, <code>stream</code>, <code>astream</code>, <code>bind_tools</code>.</p>
+
+    <h3 id="bound-chat-model"><code>BoundChatModel</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.models</code></p>
+    <p>A model with tools pre-bound. Created by <code>model.bind_tools()</code>.</p>
+
+    <h3 id="openai-chat"><code>OpenAIChat</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.providers.openai</code></p>
+    <p>OpenAI chat model. Requires <code>pip install infy[openai]</code>.</p>
+    <pre><code>from infy.providers.openai import OpenAIChat
+m = OpenAIChat("gpt-4o")</code></pre>
+
+    <h3 id="anthropic-chat"><code>AnthropicChat</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.providers.anthropic</code></p>
+    <p>Anthropic Claude model. Requires <code>pip install infy[anthropic]</code>.</p>
+    <pre><code>from infy.providers.anthropic import AnthropicChat
+m = AnthropicChat("claude-sonnet-4-20250514")</code></pre>
+
+    <h3 id="ollama-chat"><code>OllamaChat</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.providers.ollama</code></p>
+    <p>Ollama local model. Requires <code>pip install infy[ollama]</code>.</p>
+    <pre><code>from infy.providers.ollama import OllamaChat
+m = OllamaChat("llama3.1")</code></pre>
+
+    <h3 id="gemini-chat"><code>GeminiChat</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.providers.gemini</code></p>
+    <p>Google Gemini model. Requires <code>pip install infy[gemini]</code>.</p>
+    <pre><code>from infy.providers.gemini import GeminiChat
+m = GeminiChat("gemini-2.0-flash")</code></pre>
+
+    <!-- ============================================================ -->
+    <!-- Streaming -->
+    <!-- ============================================================ -->
+    <h2 id="streaming-section">Streaming</h2>
+
+    <h3 id="stream-text"><code>stream_text</code> <span class="badge badge-purple">Function</span></h3>
+    <p><strong>Module:</strong> <code>infy.streaming</code></p>
+    <p>Consume a stream and return the full accumulated text.</p>
+    <pre><code>from infy.streaming import stream_text
+text = stream_text(model.stream([HumanMessage(content="Hi")]))</code></pre>
+
+    <h3 id="stream-to-list"><code>stream_to_list</code> <span class="badge badge-purple">Function</span></h3>
+    <p><strong>Module:</strong> <code>infy.streaming</code></p>
+    <p>Consume a stream into a list of chunks.</p>
+    <pre><code>from infy.streaming import stream_to_list
+chunks = stream_to_list(model.stream([HumanMessage(content="Hi")]))</code></pre>
+
+    <h3 id="merge-chunks"><code>merge_chunks</code> <span class="badge badge-purple">Function</span></h3>
+    <p><strong>Module:</strong> <code>infy.streaming</code></p>
+    <p>Merge a list of streaming chunks into one accumulated result.</p>
+    <pre><code>from infy.streaming import merge_chunks
+full = merge_chunks(chunk_list)</code></pre>
+
+    <h3 id="tee"><code>tee</code> <span class="badge badge-purple">Function</span></h3>
+    <p><strong>Module:</strong> <code>infy.streaming</code></p>
+    <p>Split a stream into n independent copies.</p>
+    <pre><code>from infy.streaming import tee
+s1, s2 = tee(stream, 2)</code></pre>
+
+    <!-- ============================================================ -->
+    <!-- Tracing -->
+    <!-- ============================================================ -->
+    <h2 id="tracing-section">Tracing</h2>
+
+    <h3 id="tracer-protocol"><code>Tracer</code> <span class="badge badge-blue">Protocol</span></h3>
+    <p><strong>Module:</strong> <code>infy.tracing</code></p>
+    <p>Implement <code>on_start</code>, <code>on_end</code>, <code>on_error</code> for any observability backend.</p>
+
+    <h3 id="noop-tracer"><code>NoOpTracer</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.tracing</code></p>
+    <p>Default tracer. Does nothing. Zero overhead.</p>
+
+    <h3 id="traced-decorator"><code>traced</code> <span class="badge badge-purple">Decorator</span></h3>
+    <p><strong>Module:</strong> <code>infy.tracing</code></p>
+    <p>Decorator to trace function execution. Works with sync and async.</p>
+    <pre><code>from infy.tracing import traced
+
+@traced
+def my_func(x): return x
+
+@traced(name="custom")
+async def my_async(x): return x</code></pre>
+
+    <h3>Global Functions</h3>
+    <p><strong>Module:</strong> <code>infy.tracing</code></p>
+    <p><code>set_tracer(tracer)</code> &mdash; set global tracer. <code>get_tracer()</code> &mdash; get current tracer.</p>
+
+    <!-- ============================================================ -->
+    <!-- Parsers -->
+    <!-- ============================================================ -->
+    <h2 id="parsers-section">Parsers</h2>
+
+    <h3 id="str-parser"><code>StrParser</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.parsers</code></p>
+    <p>Extract text content from a message or string.</p>
+    <pre><code>from infy.parsers import StrParser
+p = StrParser()
+text = p.parse(ai_message)</code></pre>
+
+    <h3 id="json-parser"><code>JsonParser</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.parsers</code></p>
+    <p>Parse JSON from LLM output. Supports markdown code blocks and partial parsing. Uses Rust core when available.</p>
+    <pre><code>from infy.parsers import JsonParser
+p = JsonParser()
+data = p.parse('```json\n{"key": "value"}\n```')</code></pre>
+
+    <!-- ============================================================ -->
+    <!-- Tokens -->
+    <!-- ============================================================ -->
+    <h2 id="tokens-section">Tokens</h2>
+
+    <h3 id="count-tokens"><code>count_tokens</code> <span class="badge badge-purple">Function</span></h3>
+    <p><strong>Module:</strong> <code>infy.tokens</code></p>
+    <p>Fast token count approximation. Uses Rust core when available.</p>
+    <pre><code>from infy.tokens import count_tokens
+n = count_tokens("Hello world")  # ~2</code></pre>
+
+    <h3 id="count-tokens-batch"><code>count_tokens_batch</code> <span class="badge badge-purple">Function</span></h3>
+    <p><strong>Module:</strong> <code>infy.tokens</code></p>
+    <p>Count tokens for multiple texts.</p>
+    <pre><code>from infy.tokens import count_tokens_batch
+counts = count_tokens_batch(["Hello", "World"])  # [1, 1]</code></pre>
+
+    <!-- ============================================================ -->
+    <!-- Similarity -->
+    <!-- ============================================================ -->
+    <h2 id="similarity-section">Similarity</h2>
+
+    <h3 id="cosine-similarity"><code>cosine_similarity</code> <span class="badge badge-purple">Function</span></h3>
+    <p><strong>Module:</strong> <code>infy.similarity</code></p>
+    <p>Cosine similarity between two vectors. Uses Rust SIMD (AVX2) when available.</p>
+    <pre><code>from infy.similarity import cosine_similarity
+score = cosine_similarity([1, 0, 0], [1, 0, 0])  # 1.0</code></pre>
+
+    <h3 id="batch-cosine-similarity"><code>batch_cosine_similarity</code> <span class="badge badge-purple">Function</span></h3>
+    <p><strong>Module:</strong> <code>infy.similarity</code></p>
+    <p>Find most similar documents. Returns <code>list[tuple[int, float]]</code> sorted by score descending.</p>
+    <pre><code>from infy.similarity import batch_cosine_similarity
+results = batch_cosine_similarity(query_vec, doc_vectors, top_k=5)</code></pre>
+
+    <!-- ============================================================ -->
+    <!-- Embeddings -->
+    <!-- ============================================================ -->
+    <h2 id="embeddings-section">Embeddings</h2>
+
+    <h3><code>Embeddings</code> <span class="badge badge-blue">Protocol</span></h3>
+    <p><strong>Module:</strong> <code>infy.embeddings</code></p>
+    <p>Interface: <code>embed_documents(texts)</code>, <code>embed_query(text)</code></p>
+
+    <h3><code>FakeEmbeddings</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.embeddings</code></p>
+    <p>Deterministic embeddings for testing.</p>
+
+    <h3><code>OpenAIEmbeddings</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.embeddings</code></p>
+    <p>OpenAI embedding model. Requires <code>pip install infy[openai]</code>.</p>
+
+    <h3><code>OllamaEmbeddings</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.embeddings</code></p>
+    <p>Ollama local embedding model. Requires <code>pip install infy[ollama]</code>.</p>
+
+    <!-- ============================================================ -->
+    <!-- Vector Stores -->
+    <!-- ============================================================ -->
+    <h2 id="vectorstore-section">Vector Stores</h2>
+
+    <h3><code>VectorStore</code> <span class="badge badge-blue">Protocol</span></h3>
+    <p><strong>Module:</strong> <code>infy.vectorstores</code></p>
+    <p>Interface: <code>add_documents</code>, <code>similarity_search</code>, <code>delete</code>, <code>count</code></p>
+
+    <h3 id="in-memory-vector-store"><code>InMemoryVectorStore</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.vectorstores</code></p>
+    <p>In-memory vector store with Rust SIMD cosine similarity.</p>
+    <pre><code>from infy.vectorstores import InMemoryVectorStore
+store = InMemoryVectorStore()
+ids = store.add_documents(docs, embeddings)
+results = store.similarity_search(query_vec, k=4)
+store.delete(ids)
+print(store.count())</code></pre>
+
+    <!-- ============================================================ -->
+    <!-- Retrievers -->
+    <!-- ============================================================ -->
+    <h2 id="retrievers-section">Retrievers</h2>
+
+    <h3><code>Retriever</code> <span class="badge badge-blue">Protocol</span></h3>
+    <p><strong>Module:</strong> <code>infy.retrievers</code></p>
+    <p>Interface: <code>get_relevant_documents(query)</code>, <code>aget_relevant_documents(query)</code></p>
+
+    <h3 id="vector-store-retriever"><code>VectorStoreRetriever</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.retrievers</code></p>
+    <p>Retriever that searches a vector store using embeddings.</p>
+    <pre><code>from infy.retrievers import VectorStoreRetriever
+r = VectorStoreRetriever(store=store, embeddings=emb, k=4)
+docs = r.get_relevant_documents("query")</code></pre>
+    <p><strong>Fields:</strong> <code>store</code>, <code>embeddings</code>, <code>k: int</code>, <code>score_threshold: float | None</code></p>
+
+    <h3 id="multi-query-retriever"><code>MultiQueryRetriever</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.retrievers</code></p>
+    <p>Generates multiple query variations and merges results for better recall.</p>
+    <pre><code>from infy.retrievers import MultiQueryRetriever
+r = MultiQueryRetriever(retriever=ret, model=llm, num_queries=3)
+docs = r.get_relevant_documents("query")</code></pre>
+
+    <!-- ============================================================ -->
+    <!-- Text Splitters -->
+    <!-- ============================================================ -->
+    <h2 id="text-splitters-section">Text Splitters</h2>
+
+    <h3 id="text-splitter"><code>TextSplitter</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.text_splitter</code></p>
+    <p>Split text by character count with overlap.</p>
+    <pre><code>from infy.text_splitter import TextSplitter
+s = TextSplitter(chunk_size=500, chunk_overlap=50)
+chunks = s.split_text("Long text...")
+doc_chunks = s.split_documents([doc])</code></pre>
+    <p><strong>Fields:</strong> <code>chunk_size: int</code>, <code>chunk_overlap: int</code>, <code>separators: list[str] | None</code></p>
+
+    <h3 id="recursive-text-splitter"><code>RecursiveTextSplitter</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.text_splitter</code></p>
+    <p>Recursively split using a hierarchy of separators. Preserves structure better.</p>
+    <pre><code>from infy.text_splitter import RecursiveTextSplitter
+s = RecursiveTextSplitter(chunk_size=1000, chunk_overlap=200)
+chunks = s.split_text("Document...")</code></pre>
+
+    <h3 id="markdown-text-splitter"><code>MarkdownTextSplitter</code> <span class="badge badge-green">Class</span></h3>
+    <p><strong>Module:</strong> <code>infy.text_splitter</code></p>
+    <p>Split markdown documents respecting heading structure.</p>
+    <pre><code>from infy.text_splitter import MarkdownTextSplitter
+s = MarkdownTextSplitter(chunk_size=1000, chunk_overlap=200)
+chunks = s.split_text("# Title\n\nContent")</code></pre>
+
+    <!-- ============================================================ -->
+    <!-- Version -->
+    <!-- ============================================================ -->
+    <h2 id="version">Version</h2>
+    <pre><code>import infy
+print(infy.__version__)  # "0.1.0"</code></pre>
+
+    <div style="margin-top:48px;padding-top:24px;border-top:1px solid var(--border)">
+      <p style="color:var(--text-muted);font-size:13px">infy v0.1.0 &mdash; 5,103 LOC, 207 tests, 0.63s &mdash; <a href="https://github.com">GitHub</a></p>
+    </div>
+  </main>
+
+  <script src="js/docs.js"></script>
+</body>
+</html>

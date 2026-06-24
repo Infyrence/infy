@@ -1,0 +1,44 @@
+# Benchmarks / experimentation sandbox (cloned third-party projects + bench harness)
+rep_test_for_infy/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+build/
+dist/
+wheelhouse/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+htmlcov/
+.coverage
+.coverage.*
+
+# Rust / maturin
+core-rust/target/
+target/
+*.so
+*.pyd
+*.dll
+
+# Secrets / local config
+.env
+.env.*
+*.key
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

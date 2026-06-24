@@ -1,0 +1,19 @@
+[package]
+name = "infy_core"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "infy_core"
+crate-type = ["cdylib"]
+
+[dependencies]
+# abi3-py310: build a single stable-ABI wheel that works on CPython 3.10+,
+# so CI ships one wheel per platform instead of one per Python version.
+pyo3 = { version = "0.24", features = ["extension-module", "abi3-py310"] }
+serde_json = "1"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1

@@ -1,0 +1,76 @@
+[build-system]
+requires = ["maturin>=1.7,<2"]
+build-backend = "maturin"
+
+[project]
+name = "infy"
+version = "0.1.0"
+description = "A Zero-dependency, SIMD-accelerated LLM Framework built for speed, safety, and scale."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [{ name = "Hujjat Mosavinejad" }]
+keywords = ["llm", "agents", "framework", "openai", "anthropic"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = []
+
+[project.optional-dependencies]
+openai = ["openai>=1.0.0"]
+anthropic = ["anthropic>=0.30.0"]
+ollama = ["ollama>=0.3.0"]
+gemini = ["google-genai>=1.0.0"]
+pydantic = ["pydantic>=2.0.0"]
+all = ["openai>=1.0.0", "anthropic>=0.30.0", "ollama>=0.3.0", "google-genai>=1.0.0"]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.5.0",
+    "mypy>=1.10.0",
+    "pydantic>=2.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/infy-ai/infy"
+
+[tool.maturin]
+# Mixed Python/Rust project: the pure-Python package lives in ./infy and the
+# compiled SIMD core ships as a top-level `infy_core` extension module. Every
+# module that uses it falls back to pure Python when the extension is absent.
+manifest-path = "core-rust/Cargo.toml"
+python-source = "."
+module-name = "infy_core.infy_core"
+# Ship both the pure-Python `infy` package and the compiled `infy_core` module.
+include = ["infy/**/*.py", "infy/py.typed"]
+exclude = ["tests/**", "examples/**", "core-rust/target/**", "**/__pycache__/**"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+
+# Optional provider SDKs are imported lazily and aren't installed in the base
+# environment; their objects are inherently dynamic at the integration boundary.
+[[tool.mypy.overrides]]
+module = ["openai.*", "anthropic.*", "ollama.*", "google.*"]
+ignore_missing_imports = true

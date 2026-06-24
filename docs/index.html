@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>infy — A minimal, fast LLM framework</title>
+  <meta name="description" content="infy: A zero-dependency, SIMD-accelerated LLM framework. 5,103 LOC vs LangChain's 564,418. No bloat. No lock-in. Just code.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="header">
+    <div class="header-logo"><a href="index.html"><span>&#9650;</span> infy</a></div>
+    <nav class="header-nav">
+      <a href="getting-started.html">Docs</a>
+      <a href="api.html">API</a>
+      <a href="https://github.com">GitHub</a>
+    </nav>
+  </header>
+
+  <div style="max-width:960px;margin:0 auto;padding:calc(var(--header-h) + 48px) 24px 96px;">
+    <!-- Hero -->
+    <section class="hero">
+      <h1>infy</h1>
+      <p class="subtitle">A minimal, fast LLM framework. No bloat. No lock-in. Just code.</p>
+      <div class="hero-buttons">
+        <a href="getting-started.html" class="btn btn-primary">Get Started</a>
+        <a href="api.html" class="btn btn-secondary">API Reference</a>
+      </div>
+    </section>
+
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-value" style="color:var(--green)">5,103</div>
+        <div class="stat-label">Lines of Code</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">207</div>
+        <div class="stat-label">Tests</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" style="color:var(--accent)">0.63s</div>
+        <div class="stat-label">Test Suite</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" style="color:var(--yellow)">110&times;</div>
+        <div class="stat-label">Smaller than LangChain</div>
+      </div>
+    </div>
+
+    <!-- Feature Grid -->
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h3>Runnable Pipes</h3>
+        <p><code>prompt | model | parser</code> &mdash; compose chains with the pipe operator.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Tools</h3>
+        <p>Decorate a function with <code>@tool</code> and it's ready for any LLM.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Agents</h3>
+        <p>Sync, async, or graph-based agents in ~150 lines.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Memory</h3>
+        <p>Buffer, token-limited, and summary memory strategies.</p>
+      </div>
+      <div class="feature-card">
+        <h3>RAG</h3>
+        <p>Retrieve, augment, generate &mdash; one class, full pipeline.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Graphs</h3>
+        <p>Stateful execution with checkpointing, interrupts, and time-travel.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Streaming</h3>
+        <p>Chunk merging, async iteration, and streaming utilities.</p>
+      </div>
+      <div class="feature-card">
+        <h3>4 Providers</h3>
+        <p>OpenAI, Anthropic, Ollama, Gemini &mdash; all with async support.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Rust SIMD</h3>
+        <p>Token counting and cosine similarity accelerated via Rust.</p>
+      </div>
+    </div>
+
+    <!-- Quick Code Example -->
+    <h2 style="font-size:24px;font-weight:600;margin:48px 0 16px;padding-top:24px;border-top:1px solid var(--border)">Quick Example</h2>
+    <p style="color:var(--text-dim);font-size:15px;line-height:1.8;margin-bottom:16px">Build a chain in 3 lines. No config files. No boilerplate.</p>
+
+    <div class="code-header">python</div>
+    <pre><code>from infy import tool, create_agent
+from infy.providers.openai import OpenAIChat
+
+@tool
+def search(query: str) -> str:
+    """Search the web."""
+    return "sunny today"
+
+agent = create_agent(
+    OpenAIChat("gpt-4o"),
+    tools=[search],
+    system_prompt="You are helpful.",
+)
+
+result = agent("What's the weather?")
+print(result.response.text)</code></pre>
+
+    <div style="margin-top:40px;text-align:center">
+      <a href="getting-started.html" class="btn btn-primary">Start Building &rarr;</a>
+    </div>
+  </div>
+
+  <script src="js/docs.js"></script>
+</body>
+</html>

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Runnable &amp; Pipes — infy</title>
+  <meta name="description" content="The Runnable protocol, pipe operator composition, Sequence, Parallel, Lambda, and Context in infy.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="header">
+    <div class="header-logo"><a href="index.html"><span>&#9650;</span> infy</a></div>
+    <nav class="header-nav">
+      <a href="getting-started.html" class="active">Docs</a>
+      <a href="api.html">API</a>
+      <a href="https://github.com">GitHub</a>
+    </nav>
+  </header>
+
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-title">Getting Started</div>
+      <a class="sidebar-link" href="getting-started.html">Installation</a>
+      <a class="sidebar-link" href="getting-started.html#quick-start">Quick Start</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-title">Core</div>
+      <a class="sidebar-link active" href="core.html">Runnable &amp; Pipes</a>
+      <a class="sidebar-link" href="messages.html">Messages</a>
+      <a class="sidebar-link" href="streaming.html">Streaming</a>
+      <a class="sidebar-link" href="tracing.html">Tracing</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-title">Building</div>
+      <a class="sidebar-link" href="tools.html">Tools</a>
+      <a class="sidebar-link" href="agents.html">Agents</a>
+      <a class="sidebar-link" href="memory.html">Memory</a>
+      <a class="sidebar-link" href="rag.html">RAG</a>
+      <a class="sidebar-link" href="graph.html">Graphs</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-title">Providers</div>
+      <a class="sidebar-link" href="providers.html">Overview</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-title">Reference</div>
+      <a class="sidebar-link" href="api.html">API Reference</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <h1>Runnable &amp; Pipes</h1>
+    <p>Everything in infy implements the <strong>Runnable</strong> protocol. Chains are built with the <code>|</code> pipe operator.</p>
+
+    <h2 id="protocol">Runnable Protocol</h2>
+    <p>The <code>Runnable</code> protocol defines four methods that every composable unit must implement:</p>
+
+    <table>
+      <thead>
+        <tr><th>Method</th><th>Signature</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>invoke</code></td><td><code>(input, ctx?) &rarr; Any</code></td><td>Synchronous execution</td></tr>
+        <tr><td><code>ainvoke</code></td><td><code>async (input, ctx?) &rarr; Any</code></td><td>Asynchronous execution</td></tr>
+        <tr><td><code>stream</code></td><td><code>(input, ctx?) &rarr; Iterator[Any]</code></td><td>Sync streaming</td></tr>
+        <tr><td><code>astream</code></td><td><code>async (input, ctx?) &rarr; AsyncIterator[Any]</code></td><td>Async streaming</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout callout-info">The <code>ctx</code> parameter is optional in all methods. Pass a <code>Context</code> object to control tags, metadata, and concurrency.</div>
+
+    <h2 id="pipe-operator">Pipe Operator</h2>
+    <p>The <code>|</code> operator composes two runnables into a <strong>Sequence</strong>:</p>
+
+    <div class="code-header">python</div>
+    <pre><code>from infy import Lambda
+
+# These are equivalent:
+chain = Lambda(str.upper) | Lambda(lambda x: x.strip())
+chain = Lambda(str.upper).__or__(Lambda(lambda x: x.strip()))
+
+# Execute
+result = chain.invoke("  hello world  ")
+print(result)  # "HELLO WORLD"</code></pre>
+
+    <p>When you pipe a callable (function), it's automatically wrapped in a <code>Lambda</code>:</p>
+
+    <div class="code-header">python</div>
+    <pre><code>chain = Lambda(str.upper) | str.strip | Lambda(lambda x: x + "!")
+result = chain.invoke("  hello  ")
+print(result)  # "HELLO!"</code></pre>
+
+    <h2 id="sequence">Sequence</h2>
+    <p><code>Sequence</code> chains multiple runnables, passing the output of each as input to the next:</p>
+
+    <div class="code-header">python</div>
+    <pre><code>from infy import Sequence, Lambda
+
+step1 = Lambda(lambda x: x + " world")
+step2 = Lambda(str.upper)
+step3 = Lambda(lambda x: x + "!")
+
+chain = Sequence([step1, step2, step3])
+result = chain.invoke("hello")
+print(result)  # "HELLO WORLD!"</code></pre>
+
+    <h2 id="parallel">Parallel</h2>
+    <p><code>Parallel</code> executes multiple runnables concurrently on the same input, returning a dict of results:</p>
+
+    <div class="code-header">python</div>
+    <pre><code>from infy import Parallel, Lambda
+from infy.core import Context
+
+parallel = Parallel({
+    "uppercase": Lambda(str.upper),
+    "lowercase": Lambda(str.lower),
+    "length": Lambda(len),
+})
+
+result = parallel.invoke("Hello")
+print(result)
+# {'uppercase': 'HELLO', 'lowercase': 'hello', 'length': 5}</code></pre>
+
+    <h3>Concurrency Control</h3>
+    <p>Limit parallel execution with <code>Context.max_concurrency</code>:</p>
+
+    <div class="code-header">python</div>
+    <pre><code>from infy import Parallel, Lambda
+from infy.core import Context
+
+# At most 2 concurrent calls
+ctx = Context(max_concurrency=2)
+
+parallel = Parallel({
+    "a": Lambda(lambda x: x),
+    "b": Lambda(lambda x: x),
+    "c": Lambda(lambda x: x),
+})
+
+result = parallel.invoke("test", ctx=ctx)</code></pre>
+
+    <h2 id="lambda">Lambda &amp; AsyncLambda</h2>
+    <p><code>Lambda</code> wraps a sync function. <code>AsyncLambda</code> wraps an async function:</p>
+
+    <div class="code-header">python</div>
+    <pre><code>from infy import Lambda, AsyncLambda
+
+# Sync
+sync_step = Lambda(lambda x: x * 2)
+print(sync_step.invoke(5))  # 10
+
+# Async
+async_step = AsyncLambda(lambda x: x * 2)
+result = await async_step.ainvoke(5)  # 10
+
+# Pipe with async
+chain = Lambda(str.upper) | AsyncLambda(async_process) | Lambda(str.strip)</code></pre>
+
+    <h2 id="context">Context</h2>
+    <p><code>Context</code> carries execution metadata through the chain:</p>
+
+    <div class="code-header">python</div>
+    <pre><code>from infy.core import Context
+
+ctx = Context(
+    tags=["production", "v2"],
+    metadata={"user_id": "123", "session": "abc"},
+    max_concurrency=4,
+)
+
+# Merge contexts (useful for nested chains)
+child_ctx = Context(tags=["v2", "debug"])
+merged = ctx.merge(child_ctx)
+print(merged.tags)  # ['debug', 'production', 'v2']
+print(merged.metadata)  # {'user_id': '123', 'session': 'abc'}</code></pre>
+
+    <h2 id="coerce">coerce()</h2>
+    <p><code>coerce()</code> converts any callable, dict, or Tool into a Runnable:</p>
+
+    <div class="code-header">python</div>
+    <pre><code>from infy.core import coerce
+
+# Function &rarr; Lambda
+r = coerce(lambda x: x + 1)
+
+# Dict &rarr; Parallel
+r = coerce({"a": func_a, "b": func_b})
+
+# Tool &rarr; Runnable
+r = coerce(my_tool)
+
+# Already a Runnable &rarr; returned as-is
+r = coerce(Lambda(str.upper))</code></pre>
+
+    <h2>Complete Example</h2>
+    <div class="code-header">python</div>
+    <pre><code>from infy import Lambda, Parallel, AsyncLambda, Sequence
+from infy.core import Context
+
+# Build a pipeline
+pipeline = (
+    Parallel({
+        "name": Lambda(lambda x: x["name"].upper()),
+        "age": Lambda(lambda x: x["age"] + 1),
+        "tags": Lambda(lambda x: sorted(x.get("tags", []))),
+    })
+    | Lambda(lambda d: f"{d['name']} is {d['age']} years old. Tags: {', '.join(d['tags'])}")
+    | str.strip
+)
+
+result = pipeline.invoke({
+    "name": "alice",
+    "age": 30,
+    "tags": ["python", "llm", "infy"],
+})
+print(result)  # "ALICE is 31 years old. Tags: infy, llm, python"</code></pre>
+  </main>
+
+  <script src="js/docs.js"></script>
+</body>
+</html>
