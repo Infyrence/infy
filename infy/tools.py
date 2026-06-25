@@ -25,6 +25,16 @@ class Tool:
     func: Callable[..., Any]
     args_schema: dict[str, Any] = field(default_factory=dict)
     _is_async: bool = field(default=False, repr=False)
+    # Optional governance metadata (consumed by infy.governance; ignored otherwise).
+    risk_tier: str | None = None  # low | medium | high | critical
+    verb: str | None = (
+        None  # READ|WRITE|EXECUTE|NETWORK|DB|FS|EXTERNAL_API|FINANCIAL|SENSITIVE_DATA
+    )
+    reversibility: str | None = None
+    blast_radius: str | None = None
+    cost_class: str | None = None
+    side_effect: bool = False  # unprofiled side-effecting tools default to HIGH risk
+    scopes: list[str] = field(default_factory=list)
 
     def invoke(self, input: str | dict[str, Any]) -> Any:
         if isinstance(input, str):
@@ -68,9 +78,22 @@ class Tool:
 
 
 def tool(
-    func: Callable[..., Any] | None = None, *, name: str | None = None
+    func: Callable[..., Any] | None = None,
+    *,
+    name: str | None = None,
+    risk_tier: str | None = None,
+    verb: str | None = None,
+    reversibility: str | None = None,
+    blast_radius: str | None = None,
+    cost_class: str | None = None,
+    side_effect: bool = False,
+    scopes: list[str] | None = None,
 ) -> Tool | Callable[..., Any]:
-    """Decorator to turn a function into a Tool. Works with sync and async functions."""
+    """Decorator to turn a function into a Tool. Works with sync and async functions.
+
+    Optional governance metadata (risk_tier, verb, side_effect, ...) is attached to the Tool
+    and consumed by infy.governance; it is inert if governance is not used.
+    """
 
     def decorator(f: Callable[..., Any]) -> Tool:
         return Tool(
@@ -79,6 +102,13 @@ def tool(
             func=f,
             args_schema=_schema_from_function(f),
             _is_async=asyncio.iscoroutinefunction(f),
+            risk_tier=risk_tier,
+            verb=verb,
+            reversibility=reversibility,
+            blast_radius=blast_radius,
+            cost_class=cost_class,
+            side_effect=side_effect,
+            scopes=scopes or [],
         )
 
     if func is not None:
