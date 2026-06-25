@@ -5,16 +5,17 @@ build-backend = "maturin"
 [project]
 name = "infy"
 version = "0.1.0"
-description = "A Zero-dependency, SIMD-accelerated LLM Framework built for speed, safety, and scale."
+description = "A zero-dependency, SIMD-accelerated LLM framework built for speed, safety, and scale."
 readme = "README.md"
-license = "MIT"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
 requires-python = ">=3.10"
 authors = [{ name = "Hujjat Mosavinejad" }]
-keywords = ["llm", "agents", "framework", "openai", "anthropic"]
+keywords = ["llm", "agents", "framework", "governance", "openai", "anthropic"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -41,7 +42,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/infy-ai/infy"
+Homepage = "https://infyrence.com"
+Repository = "https://github.com/Infyrence/infy"
+Issues = "https://github.com/Infyrence/infy/issues"
+Changelog = "https://github.com/Infyrence/infy/blob/main/CHANGELOG.md"
 
 [tool.maturin]
 # Mixed Python/Rust project: the pure-Python package lives in ./infy and the

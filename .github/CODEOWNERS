@@ -1,0 +1,13 @@
+# Code owners — GitHub auto-requests these owners for review on matching paths.
+# NOTE: replace @Infyrence below with the maintainer's GitHub username or a @org/team handle.
+
+# Default owner for everything in the repo.
+*                       @Infyrence
+
+# Security-critical paths get explicit ownership (pair with branch protection
+# requiring code-owner review).
+/infy/governance/       @Infyrence
+/core-rust/             @Infyrence
+/infy_core/             @Infyrence
+/SECURITY.md            @Infyrence
+/.github/               @Infyrence

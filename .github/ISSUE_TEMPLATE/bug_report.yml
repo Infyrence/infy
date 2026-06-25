@@ -1,0 +1,44 @@
+name: Bug report
+description: Report a defect in infy
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. For **security vulnerabilities**, do not file a public issue —
+        see [SECURITY.md](https://github.com/Infyrence/infy/blob/main/SECURITY.md).
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug, including the full traceback if any.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: The smallest code snippet that reproduces the issue.
+      render: python
+    validations:
+      required: true
+  - type: input
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: infy version
+      placeholder: "e.g. 0.1.0 (or commit SHA)"
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Python / OS / Rust extension present?
+      placeholder: "e.g. Python 3.12, Windows 11, infy_core built (release)"
+    validations:
+      required: true

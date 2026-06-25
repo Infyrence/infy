@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use infy in your work, please cite it as below."
+title: "infy: a zero-dependency, SIMD-accelerated LLM framework with in-process governance"
+abstract: >-
+  infy is a from-scratch Python runtime for LLM applications and agentic systems with a
+  zero-dependency core, a Rust SIMD extension for hot paths, a Pregel-style stateful graph
+  executor, and an optional in-process governance layer (policy, risk, approval, tamper-evident
+  audit).
+type: software
+authors:
+  - family-names: Mosavinejad
+    given-names: Hujjat
+    affiliation: Infyrence
+license: Apache-2.0
+repository-code: "https://github.com/Infyrence/infy"
+url: "https://infyrence.com"
+keywords:
+  - llm
+  - agents
+  - governance
+  - framework
+  - rust

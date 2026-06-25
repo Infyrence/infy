@@ -1,0 +1,22 @@
+version: 2
+updates:
+  # GitHub Actions used by CI / release workflows.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels: ["dependencies", "ci"]
+
+  # Rust crates for the infy_core SIMD extension.
+  - package-ecosystem: "cargo"
+    directory: "/core-rust"
+    schedule:
+      interval: "weekly"
+    labels: ["dependencies", "rust"]
+
+  # Optional / dev Python dependencies (provider SDKs, tooling).
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels: ["dependencies", "python"]

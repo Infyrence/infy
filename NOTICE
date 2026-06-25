@@ -1,0 +1,15 @@
+infy
+Copyright 2026 Hujjat Mosavinejad (Infyrence)
+
+This product includes software developed by Hujjat Mosavinejad and the
+infy contributors as part of the Infyrence project (https://infyrence.com).
+
+Licensed under the Apache License, Version 2.0. See the LICENSE file for terms.
+
+---
+
+This repository is the open-source core of infy, licensed under Apache-2.0.
+The hosted Infyrence control plane (managed audit, approval workflows, policy
+management, multi-tenant governance, and compliance tooling) is a separate
+commercial offering and is NOT part of this repository or this license. See the
+"Open core" section of README.md for the boundary.

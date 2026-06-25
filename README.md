@@ -3,8 +3,9 @@
 **A zero-dependency, SIMD-accelerated LLM framework built for speed, safety, and scale.**
 
 ![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
+[![License](https://img.shields.io/badge/license-Apache--2.0-green)](LICENSE)
 ![Type-checked](https://img.shields.io/badge/mypy-strict-blue)
+![Tests](https://img.shields.io/badge/tests-327%20passing-brightgreen)
 ![Status](https://img.shields.io/badge/status-alpha-orange)
 
 infy is a from-scratch runtime for building LLM applications and agentic systems. The
@@ -53,6 +54,9 @@ pip install "infy[all]"          # all providers
 ```
 
 Requires Python 3.10+.
+
+> **Alpha:** until the first tagged PyPI release, install from source — see
+> [CONTRIBUTING.md](CONTRIBUTING.md) (`pip install -e ".[dev]" && maturin develop --release`).
 
 ---
 
@@ -172,6 +176,9 @@ from typing import Annotated, TypedDict
 
 from infy import HumanMessage, StateGraph, START, END, InMemorySaver
 
+# `model` is a ChatModel; `TOOLS` is your tool schema list; `run_tools` is a node that
+# executes the tool calls in the last message — all supplied by you.
+
 class State(TypedDict):
     messages: Annotated[list, operator.add]   # reducer: append across supersteps
 
@@ -227,6 +234,52 @@ Capabilities:
 
 ---
 
+## Governance (optional, in-process)
+
+Giving an agent real authority — shell, deploys, money, customer data — raises one question:
+*how do you make that safe, and prove what it did?* infy answers it with an optional control
+plane wired into the agent loop. Omit it and nothing changes and nothing is imported; opt in and
+every tool call is policy-checked **in-process** (microseconds) and every step is written to a
+tamper-evident audit trail.
+
+```python
+from infy import create_agent
+from infy.governance import Governance, Policy, CallbackApprover
+
+gov = Governance(
+    policy=Policy(
+        deny=["delete_database"],        # never, regardless of approval
+        require_approval=["deploy"],     # allowed only with a human yes
+    ),
+    approver=CallbackApprover(prompt_via_slack),
+    principal="agent://acme/assistant",
+)
+
+agent = create_agent(model, tools=[search, deploy, delete_database], governance=gov)
+agent("ship the release")
+
+assert gov.audit.verify()      # tamper-evident receipt of everything that happened
+```
+
+- **Deny-by-default, fail-closed.** Cedar-style semantics (forbid overrides permit) in pure
+  Python behind a `PolicyEngine` protocol. Any error in policy, risk, or approval yields a
+  *deny* — and is still audited. There is no path to a silent allow.
+- **Risk-tiered.** Tools carry a static risk profile; an unprofiled side-effecting tool is treated
+  as HIGH and escalated to a human approver by default.
+- **Human approval gate.** A pluggable `Approver` (default `DenyAll`) pauses high-risk calls for a
+  human yes/no, recorded in the audit chain.
+- **Tamper-evident audit.** An append-only, SHA-256 / HMAC hash-chained log with `verify()` — the
+  evidence trail SOC 2 and the EU AI Act expect.
+- **Free enough to leave on.** Measured ~50 µs per tool call — about **0.003%** of the LLM call it
+  guards. Details and threat model: [`infy/governance/README.md`](infy/governance/README.md).
+
+Enforcement is in-process **by design**: a policy microservice with a network hop before every
+tool call would erase infy's cold-start and latency advantage. The heavy, operated pieces —
+durable audit, hosted approval queues, multi-tenant policy management — are the commercial layer
+(see [Open core](#open-core--whats-commercial)) and attach behind these same protocol seams.
+
+---
+
 ## Providers
 
 | Provider | Class | Notes |
@@ -267,7 +320,7 @@ billed-native   ████████████                     2.75x
 ```
 
 A representative live, billed run against `gemini-2.5-flash` on Vertex AI — native provider
-vs native provider — was **2.75x faster cold start** and used **3.71x less resident memory**
+vs native provider — was **2.75x faster cold start** and used **~3.7x less resident memory**
 (73 MB vs 270 MB).
 
 **The honest caveat.** Per-invocation overhead multiples are real but **amortise into network
@@ -301,6 +354,10 @@ flowchart TB
         GEM["Gemini / Vertex"]
         OLL["Ollama"]
     end
+    subgraph GOV["infy.governance — optional control plane"]
+        POL["policy · risk · approval"]
+        AUD["tamper-evident audit"]
+    end
     subgraph RUST["infy_core — Rust SIMD extension, optional"]
         JP["JSON parse · fenced extract"]
         SIM["cosine similarity"]
@@ -311,6 +368,7 @@ flowchart TB
     RUN --> MOD
     GR --> MOD
     MOD --> PROV
+    U -. policy + audit hooks .-> GOV
     PT -. accelerated by .-> RUST
 ```
 
@@ -319,12 +377,15 @@ flowchart TB
 - **Rust extension** (`infy_core`, built with maturin/PyO3, `abi3` for a single wheel across
   Python 3.10+) — SIMD-assisted JSON parsing and markdown-fenced JSON extraction, cosine
   similarity, and tokenisation. Runtime CPU-feature detection selects the SIMD path.
+- **Optional governance** (`infy.governance`) — an in-process policy / risk / approval / audit
+  control plane that hooks the agent loop. Not imported by the core until you use it.
 - **Graceful degradation** — every module that uses the extension falls back to a pure-Python
   implementation, so the framework is fully functional with the extension absent.
 
 ```
 infy/            pure-Python framework (zero runtime deps)
   graph/         StateGraph, channels, checkpointing, interrupts
+  governance/    optional in-process control plane (policy, risk, approval, audit)
   providers/     OpenAI, Anthropic, Gemini, Ollama
 core-rust/       Rust SIMD extension (infy_core)
 tests/           strict mypy, ruff, pytest
@@ -332,23 +393,44 @@ tests/           strict mypy, ruff, pytest
 
 ---
 
+## Open core & what's commercial
+
+infy is **open core**, Apache-2.0. Everything in this repository is free to use, self-host, and
+build on — forever. That includes the **in-process governance library**: the policy engine, risk
+tiering, the approval-gate primitive, and the local tamper-evident audit log (with `verify()`).
+The enforcement code is open *on purpose* — a control plane you cannot read is one you cannot
+trust.
+
+The commercial layer (operated by [Infyrence](https://infyrence.com), **not** in this repo) is the
+*managed* surface that begins where in-process ends — at the network boundary:
+
+| Open — Apache-2.0, this repo | Commercial — Infyrence cloud |
+| --- | --- |
+| In-process policy / risk / approval primitives | Multi-tenant policy management, versioning, RBAC |
+| Local hash-chained audit + `verify()` | Durable WORM-anchored audit sink (tamper-*proof*), retention, query |
+| `Approver` protocol + callbacks | Hosted approval inbox (Slack / web), identity capture, four-eyes |
+| `PolicyEngine` protocol seam | Embedded Cedar engine, YAML→policy authoring DSL, compliance packs |
+
+Commercial features attach **behind the same open protocol seams** (`PolicyEngine`, `Approver`,
+the audit interface) — no fork, and no lock-in at the enforcement boundary.
+
+---
+
 ## Roadmap
 
-infy is the runtime. The trajectory is **agent governance** — a control plane for defining
-and enforcing what an agent is permitted to do: boundaries, authorities, action allowlists,
-spend and rate limits, approval gates, and audit. The graph runtime already provides the
-core primitive (interrupt/resume for human-in-the-loop); the next layer is composable policy
-hooks around every model and tool call, configured declaratively and observable by default.
-
-Project [Infyrence](https://infyrence.com) builds the platform around this: scaffolding
-(`create-infy-agent`), deployment, and governance for production agent systems.
+The governance MVP — in-process enforcement, the approval gate, and tamper-evident audit — ships
+today. Deliberately deferred (behind the stable protocol seams above, until a design partner pulls
+them): an embedded Cedar engine compiled into `infy_core`, a YAML→policy DSL, taint/provenance and
+egress DLP for prompt-injection defense, plan-level authorization, governance on the graph path,
+and capability attenuation across sub-agents.
 
 ---
 
 ## Project status
 
-Alpha. The model, runnable, structured-output, tool, agent, and graph APIs are stable and
-covered by the test suite (strict `mypy`, `ruff`, ~300 tests). Surface area is deliberately
+Alpha. The model, runnable, structured-output, tool, agent, graph, and governance APIs are stable
+and covered by the test suite (strict `mypy`, `ruff`, 327 passing; 8 skipped without provider
+SDKs). Surface area is deliberately
 smaller than LangChain — there is no prompt-template DSL, no `MessagesState` helper, and the
 provider/integration catalogue is focused rather than exhaustive. Treat minor releases as
 potentially breaking until 1.0.
@@ -371,8 +453,12 @@ mypy infy
 pytest -q
 ```
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow and the Developer Certificate of
+Origin, and [SECURITY.md](SECURITY.md) to report a vulnerability.
+
 ---
 
 ## License
 
-MIT © Hujjat Mosavinejad
+[Apache-2.0](LICENSE) © 2026 Hujjat Mosavinejad (Infyrence). See [NOTICE](NOTICE) for attribution
+and the open-core boundary.

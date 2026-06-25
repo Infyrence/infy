@@ -40,7 +40,7 @@ machine-relative; the **ratios** are the portable result, not the absolute milli
 
 ## Headline
 
-Across eight ported projects:
+Across seven ported projects (offline, framework overhead isolated):
 
 | Dimension | infy vs LangChain/LangGraph |
 | --- | --- |
@@ -130,6 +130,34 @@ parsing are real. Microseconds per operation.
 The Rust advantage is largely **fixed per-call overhead**: on a 3 KB payload it shrinks to
 1.2x because materialising the parsed result as Python objects dominates either way. infy's
 parser is a low-overhead, fast-on-small-and-fenced story — not a large-JSON throughput story.
+
+---
+
+## Governance overhead — is it free enough to leave on?
+
+infy's governance layer (policy + risk + tamper-evident audit) runs **in-process** at the tool
+chokepoint, so the question is whether it is cheap enough to enable on every agent. Measured on a
+real `create_agent` loop (an incident responder issuing 5 tool calls), four arms producing
+byte-identical output:
+
+| arm | cold start | RSS over baseline | latency / run |
+| --- | --: | --: | --: |
+| infy (ungoverned) | 129 ms | 9.2 MB | 0.019 ms |
+| infy + governance | 145 ms | 10.7 MB | 0.246 ms |
+| LangChain (ungoverned) | 980 ms | 54.6 MB | 8.3 ms |
+| LangChain + middleware | 967 ms | 54.8 MB | 9.2 ms |
+
+- **infy governance overhead: ≈ +50 µs per tool call** (+230–285 µs/run for 5 calls), stable
+  across runs. That dominates the *mocked* 19 µs run — but against the ~1–2 s real LLM call it
+  guards, it is **~0.003%** overhead. Governance is free enough to leave on for every agent.
+- **infy + governance vs LangChain + equivalent middleware** (same policy + audit work):
+  **~6–9× lighter cold start, ~5× lighter RAM, ~38–43× faster per run** — and infy's governance
+  does *more* per call (risk tiering + a hash-chained audit event), because enforcement is a plain
+  in-process function call, not a graph step.
+
+Honest caveat: the LangChain middleware delta (+0.3–2.6 ms/run) is real but lost in the run-to-run
+noise of its ~8–13 ms graph execution, so it is reported, not relied on. Full harness and threat
+model: [`infy/governance/README.md`](infy/governance/README.md).
 
 ---
 

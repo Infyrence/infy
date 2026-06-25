@@ -1,6 +1,15 @@
 # Benchmarks / experimentation sandbox (cloned third-party projects + bench harness)
 rep_test_for_infy/
 
+# Standalone demo apps (separate projects, not part of the infy package)
+deep_research_infy/
+deep_research_langgraph/
+deep_research_bench/
+code_review_infy/
+code_review_langgraph/
+code_review_bench/
+governance_bench/
+
 # Python
 __pycache__/
 *.py[cod]
