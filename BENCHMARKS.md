@@ -40,7 +40,7 @@ machine-relative; the **ratios** are the portable result, not the absolute milli
 
 ## Headline
 
-Across seven ported projects (offline, framework overhead isolated):
+Across seven heavier ported projects (offline, framework overhead isolated):
 
 | Dimension | infy vs LangChain/LangGraph |
 | --- | --- |
@@ -48,6 +48,9 @@ Across seven ported projects (offline, framework overhead isolated):
 | Resident memory | **2.7x – 5.5x lower** |
 | Per-invocation framework overhead | **12x – 93x lower** |
 | Orchestration LOC | parity to moderately smaller |
+
+A broader corpus of ~37 community agents (see the corpus run below) reproduces this and runs
+higher on cold start for lighter graphs (median ~8.6x faster, memory ~5.4x lower).
 
 The per-invocation multiples are real but workload-dependent and, in production, **amortise
 into network latency** — see [The honest caveat](#the-honest-caveat).
@@ -58,13 +61,13 @@ into network latency** — see [The honest caveat](#the-honest-caveat).
 
 | # | Project | Shape | LOC | Cold start | Loop latency | RSS |
 | --- | --- | --- | --: | --: | --: | --: |
-| 01 | Multi-Agent Medical Assistant | 11-node decision graph, vision routing | 0.96x | 4.48x | 29.98x | 5.04x |
-| 02 | SRAgent | cyclic ReAct + structured router | 1.16x | 3.91x | 12.46x | 3.08x |
-| 03 | ai-hedge-fund | fan-out to 10 analysts + reducers | 1.10x | 3.63x | 29.96x | 2.68x |
-| 04 | browser-use | per-step pydantic agent (not LangGraph) | n/a | 0.69x | 1.67x/step | 1.23x |
-| 05 | swe-agent | architect subgraph + developer, pydantic state | 1.16x | 3.98x | **47.14x** | 3.08x |
-| 06 | DATAGEN | supervisor hub-and-spoke, cyclic revision | 1.20x | 5.55x | 19.34x | 5.00x |
-| 07 | terminal_agent | LangChain 1.0 agent middleware | 1.18x | 6.78x | **93.15x** | 5.51x |
+| 01 | Medical-assistant agent | 11-node decision graph, vision routing | 0.96x | 4.48x | 29.98x | 5.04x |
+| 02 | Research / ReAct agent | cyclic ReAct + structured router | 1.16x | 3.91x | 12.46x | 3.08x |
+| 03 | Multi-analyst finance agent | fan-out to 10 analysts + reducers | 1.10x | 3.63x | 29.96x | 2.68x |
+| 04 | Browser-automation agent | per-step pydantic agent (not LangGraph) | n/a | 0.69x | 1.67x/step | 1.23x |
+| 05 | Software-engineering agent | architect subgraph + developer, pydantic state | 1.16x | 3.98x | **47.14x** | 3.08x |
+| 06 | Data-generation agent | supervisor hub-and-spoke, cyclic revision | 1.20x | 5.55x | 19.34x | 5.00x |
+| 07 | Terminal / CLI agent | LangChain 1.0 agent middleware | 1.18x | 6.78x | **93.15x** | 5.51x |
 
 LOC values are infy-relative: `>1.0` means infy is smaller. The latency advantage scales
 with how much framework machinery the incumbent layers on — pydantic state, LCEL structured
@@ -73,24 +76,76 @@ output, nested subgraphs, middleware stacks.
 ### Cold start — infy x faster (higher is better)
 
 ```
-07 terminal_agent  ████████████████████████████████████████  6.78x
-06 DATAGEN         █████████████████████████████████         5.55x
-01 medical         ██████████████████████████                4.48x
-05 swe-agent       ███████████████████████                   3.98x
-02 sragent         ███████████████████████                   3.91x
-03 hedge-fund      █████████████████████                     3.63x
+07 terminal / CLI    ████████████████████████████████████████  6.78x
+06 data-generation   █████████████████████████████████         5.55x
+01 medical assistant ██████████████████████████                4.48x
+05 software-eng      ███████████████████████                   3.98x
+02 research / ReAct  ███████████████████████                   3.91x
+03 finance analysts  █████████████████████                     3.63x
 ```
 
 ### Resident memory — infy x lower (higher is better)
 
 ```
-07 terminal_agent  ████████████████████████████████████████  5.51x
-01 medical         █████████████████████████████████████     5.04x
-06 DATAGEN         ████████████████████████████████████      5.00x
-02 sragent         ██████████████████████                    3.08x
-05 swe-agent       ██████████████████████                    3.08x
-03 hedge-fund      ███████████████████                       2.68x
+07 terminal / CLI    ████████████████████████████████████████  5.51x
+01 medical assistant █████████████████████████████████████     5.04x
+06 data-generation   ████████████████████████████████████      5.00x
+02 research / ReAct  ██████████████████████                    3.08x
+05 software-eng      ██████████████████████                    3.08x
+03 finance analysts  ███████████████████                       2.68x
 ```
+
+---
+
+## Corpus run (a broad set of community agents)
+
+Beyond the seven heavier projects, the same harness was run across a public collection of
+roughly fifty community agent tutorials: small-to-medium LangGraph and LangChain agents
+spanning support routing, planning, research, analysis, memory, multi-agent coordination, and
+content generation. Each was ported to both frameworks over a shared deterministic leaf,
+verified byte-identical, then measured identically.
+
+**Coverage.** 37 ported and verified; 12 documented as out of scope (built on a different
+framework, or driven by a live external service — web search, image or audio generation, a
+real vector store, or MCP servers — that cannot be reduced to a deterministic offline leaf);
+2 did not reach byte-identical parity and were dropped rather than reported. Gaps are
+documented, not forced: no infy feature was added to win a port.
+
+**Result across the 37 (infy vs LangChain/LangGraph, offline, framework overhead isolated):**
+
+| Dimension | Median | Range |
+| --- | --- | --- |
+| Cold start | **8.6x faster** | 2.5x – 9.9x |
+| Resident memory | **5.4x lower** | 1.9x – 8.1x |
+| Per-invocation framework overhead | **21x lower** | 10x – 609x |
+| Orchestration LOC | **parity** (1.00x) | 0.92x – 1.74x |
+
+These lighter graphs cluster higher on cold start (most land near 8–9x) than the heavier
+seven, because there is less per-graph work to dilute infy's lean import. The LOC story is the
+quiet one: most ports are the LangGraph file with a single import line changed, so parity is
+expected; a handful came out meaningfully smaller (up to 1.74x).
+
+**Representative ports** (ratio = infy advantage; LangChain/LangGraph time ÷ infy time):
+
+| Agent | LOC | Cold start | Loop latency | RSS |
+| --- | --: | --: | --: | --: |
+| Customer-support router (categorise, sentiment, route, escalate) | 1.00x | 8.6x | 20.0x | 5.5x |
+| Tabular data-analysis agent (tool loop over a dataframe) | 1.74x | 9.9x | 265x | 7.1x |
+| Task-planning agent (decompose a goal into ordered steps) | 1.55x | 9.5x | 381x | 8.1x |
+| Multi-step travel planner | 1.00x | 9.4x | 18.6x | 5.4x |
+| Memory-augmented conversational agent | 1.02x | 8.7x | 314x | 5.4x |
+| Supervisor multi-agent collaboration | 1.00x | 8.3x | 28.4x | 5.0x |
+| Scientific-paper research agent | 1.00x | 8.4x | 20.7x | 5.3x |
+| Self-improving (critique-and-retry) agent | 1.13x | 8.8x | 268x | 5.7x |
+| Interactive narrative state machine | 1.00x | 8.8x | 17.6x | 5.0x |
+| News summariser | 1.00x | 8.6x | 16.9x | 5.7x |
+| Market-insight agent | 1.00x | 8.5x | 19.3x | 5.3x |
+| Academic task-planning agent (smallest graph) | 1.00x | 2.5x | 49.1x | 1.9x |
+
+The last row is the honest low end: the smallest graph, where the framework does the least, so
+infy's cold-start edge shrinks to 2.5x and memory to 1.9x. The per-invocation outliers
+(265x–609x) are the simplest agents, where the incumbent's per-superstep machinery is almost
+the entire cost; as everywhere, that overhead amortises into the live model call in production.
 
 ---
 
@@ -163,9 +218,9 @@ model: [`infy/governance/README.md`](infy/governance/README.md).
 
 ## Where infy loses (and what changed)
 
-Project 04 (browser-use) is the honest counter-example. Per LLM step:
+Project 04 (the browser-automation agent) is the honest counter-example. Per LLM step:
 
-| Operation | browser-use | infy | Result |
+| Operation | incumbent | infy | Result |
 | --- | --: | --: | --- |
 | Construct messages | 27.7 µs | 8.4 µs | infy 3.3x faster |
 | Serialise to OpenAI format | 3.5 µs | 5.3 µs | infy 0.65x (slower) |
@@ -173,7 +228,7 @@ Project 04 (browser-use) is the honest counter-example. Per LLM step:
 | Full step | 38.1 µs | 22.8 µs | infy 1.67x faster |
 
 infy was net-faster per step (frozen dataclasses construct 3.3x faster than validated
-pydantic models) but **lost on validated parsing**: browser-use used `pydantic-core`'s
+pydantic models) but **lost on validated parsing**: the incumbent used `pydantic-core`'s
 `model_validate_json` (fused single-pass parse+validate), which beat infy's
 `JsonParser → dict → construct` two-pass. **This has since been addressed** — infy's
 `with_structured_output` now delegates to `pydantic-core.model_validate_json` when given a

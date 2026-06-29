@@ -9,6 +9,7 @@ code_review_infy/
 code_review_langgraph/
 code_review_bench/
 governance_bench/
+genai_bench/
 
 # Python
 __pycache__/
