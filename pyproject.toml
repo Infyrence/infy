@@ -10,7 +10,7 @@ readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
 requires-python = ">=3.10"
-authors = [{ name = "Hujjat Mosavinejad" }]
+authors = [{ name = "Infyrence" }]
 keywords = ["llm", "agents", "framework", "governance", "openai", "anthropic"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -73,8 +73,11 @@ asyncio_mode = "auto"
 python_version = "3.10"
 strict = true
 
-# Optional provider SDKs are imported lazily and aren't installed in the base
-# environment; their objects are inherently dynamic at the integration boundary.
+# Optional provider SDKs and framework integrations are imported lazily and aren't installed in
+# the base environment; their objects are inherently dynamic at the integration boundary.
 [[tool.mypy.overrides]]
-module = ["openai.*", "anthropic.*", "ollama.*", "google.*"]
+module = [
+    "openai.*", "anthropic.*", "ollama.*", "google.*",
+    "smolagents", "smolagents.*", "openhands.*", "langchain_core.*", "langchain.*",
+]
 ignore_missing_imports = true
