@@ -61,10 +61,9 @@ class OpenAIEmbeddings:
         try:
             from openai import OpenAI
 
-            kwargs = {}
-            if self.api_key:
-                kwargs["api_key"] = self.api_key
-            self._client = OpenAI(**kwargs)
+            # api_key=None makes the client read OPENAI_API_KEY from the environment, so this
+            # covers both the explicit-key and env-var cases without an untyped **kwargs splat.
+            self._client = OpenAI(api_key=self.api_key)
         except ImportError:
             raise ImportError("OpenAI not installed. pip install infy[openai]") from None
 
