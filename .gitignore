@@ -52,3 +52,9 @@ target/
 Thumbs.db
 .idea/
 .vscode/
+
+# Claude Code local settings (never publish)
+.claude/
+
+# Long-form book draft (superseded by the docs site at docs.infyrence.com)
+BOOK.md

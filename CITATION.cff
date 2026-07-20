@@ -8,9 +8,7 @@ abstract: >-
   audit).
 type: software
 authors:
-  - family-names: Mosavinejad
-    given-names: Hujjat
-    affiliation: Infyrence
+  - name: "Infyrence"
 license: Apache-2.0
 repository-code: "https://github.com/Infyrence/infy"
 url: "https://infyrence.com"
