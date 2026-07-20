@@ -1,7 +1,7 @@
 # Benchmarks
 
-This document records how infy is measured against LangChain/LangGraph, the raw numbers, and
-— deliberately — the cases where infy does *not* win. The goal is a number you can trust, not
+This document records how infy is measured against LangChain/LangGraph, the raw numbers, and,
+deliberately, the cases where infy does *not* win. The goal is a number you can trust, not
 a number that flatters.
 
 ## Methodology
@@ -19,7 +19,7 @@ flowchart LR
     P1 --> LEAF["shared deterministic mocked leaves"]
     P2 --> LEAF
     LEAF --> EQ{"byte-identical output?"}
-    EQ -->|no| FIX["fix the port — do not measure"]
+    EQ -->|no| FIX["fix the port, do not measure"]
     EQ -->|yes| M["measure: LOC · cold start · latency · RSS"]
 ```
 
@@ -40,20 +40,26 @@ machine-relative; the **ratios** are the portable result, not the absolute milli
 
 ## Headline
 
-Across seven heavier ported projects (offline, framework overhead isolated):
+Across a corpus of about 37 community agents (offline, framework overhead isolated), median:
 
 | Dimension | infy vs LangChain/LangGraph |
 | --- | --- |
-| Cold start | **2.7x – 6.8x faster** |
-| Resident memory | **2.7x – 5.5x lower** |
-| Per-invocation framework overhead | **12x – 93x lower** |
+| Cold start (import + compile) | **8.6x faster** |
+| Resident memory | **5.4x lighter** |
+| Per-invocation framework overhead | **21x lower** |
+| Orchestration LOC | parity |
+
+Conservative view, on the seven heavier ported projects below:
+
+| Dimension | infy vs LangChain/LangGraph |
+| --- | --- |
+| Cold start | **2.7x to 6.8x faster** |
+| Resident memory | **2.7x to 5.5x lower** |
+| Per-invocation framework overhead | **12x to 93x lower** |
 | Orchestration LOC | parity to moderately smaller |
 
-A broader corpus of ~37 community agents (see the corpus run below) reproduces this and runs
-higher on cold start for lighter graphs (median ~8.6x faster, memory ~5.4x lower).
-
-The per-invocation multiples are real but workload-dependent and, in production, **amortise
-into network latency** — see [The honest caveat](#the-honest-caveat).
+The per-invocation multiples are real but workload-dependent, and in production they **amortize
+into network latency** (see [The honest caveat](#the-honest-caveat)).
 
 ---
 
@@ -70,10 +76,10 @@ into network latency** — see [The honest caveat](#the-honest-caveat).
 | 07 | Terminal / CLI agent | LangChain 1.0 agent middleware | 1.18x | 6.78x | **93.15x** | 5.51x |
 
 LOC values are infy-relative: `>1.0` means infy is smaller. The latency advantage scales
-with how much framework machinery the incumbent layers on — pydantic state, LCEL structured
+with how much framework machinery the incumbent layers on: pydantic state, LCEL structured
 output, nested subgraphs, middleware stacks.
 
-### Cold start — infy x faster (higher is better)
+### Cold start: infy x faster (higher is better)
 
 ```
 07 terminal / CLI    ████████████████████████████████████████  6.78x
@@ -84,7 +90,7 @@ output, nested subgraphs, middleware stacks.
 03 finance analysts  █████████████████████                     3.63x
 ```
 
-### Resident memory — infy x lower (higher is better)
+### Resident memory: infy x lower (higher is better)
 
 ```
 07 terminal / CLI    ████████████████████████████████████████  5.51x
@@ -106,8 +112,8 @@ content generation. Each was ported to both frameworks over a shared determinist
 verified byte-identical, then measured identically.
 
 **Coverage.** 37 ported and verified; 12 documented as out of scope (built on a different
-framework, or driven by a live external service — web search, image or audio generation, a
-real vector store, or MCP servers — that cannot be reduced to a deterministic offline leaf);
+framework, or driven by a live external service (web search, image or audio generation, a
+real vector store, or MCP servers) that cannot be reduced to a deterministic offline leaf);
 2 did not reach byte-identical parity and were dropped rather than reported. Gaps are
 documented, not forced: no infy feature was added to win a port.
 
@@ -115,12 +121,12 @@ documented, not forced: no infy feature was added to win a port.
 
 | Dimension | Median | Range |
 | --- | --- | --- |
-| Cold start | **8.6x faster** | 2.5x – 9.9x |
-| Resident memory | **5.4x lower** | 1.9x – 8.1x |
-| Per-invocation framework overhead | **21x lower** | 10x – 609x |
-| Orchestration LOC | **parity** (1.00x) | 0.92x – 1.74x |
+| Cold start | **8.6x faster** | 2.5x to 9.9x |
+| Resident memory | **5.4x lower** | 1.9x to 8.1x |
+| Per-invocation framework overhead | **21x lower** | 10x to 609x |
+| Orchestration LOC | **parity** (1.00x) | 0.92x to 1.74x |
 
-These lighter graphs cluster higher on cold start (most land near 8–9x) than the heavier
+These lighter graphs cluster higher on cold start (most land near 8 to 9x) than the heavier
 seven, because there is less per-graph work to dilute infy's lean import. The LOC story is the
 quiet one: most ports are the LangGraph file with a single import line changed, so parity is
 expected; a handful came out meaningfully smaller (up to 1.74x).
@@ -144,7 +150,7 @@ expected; a handful came out meaningfully smaller (up to 1.74x).
 
 The last row is the honest low end: the smallest graph, where the framework does the least, so
 infy's cold-start edge shrinks to 2.5x and memory to 1.9x. The per-invocation outliers
-(265x–609x) are the simplest agents, where the incumbent's per-superstep machinery is almost
+(265x to 609x) are the simplest agents, where the incumbent's per-superstep machinery is almost
 the entire cost; as everywhere, that overhead amortises into the live model call in production.
 
 ---
@@ -163,7 +169,7 @@ The billed native run is the truest comparison: LangChain uses its actual
 `google-cloud-aiplatform` provider (≈270 MB resident, ≈4 s import) versus infy on
 `google-genai` (≈73 MB, ≈1.5 s). Wall-clock is at parity because the ~1.6 s network
 round-trip dominates. The LOC flips to infy-larger only because `GeminiChat` lacks
-`project`/`location`/`credentials` arguments and needs a 3-line client injection — a known,
+`project`/`location`/`credentials` arguments and needs a 3-line client injection, a known,
 small gap.
 
 ---
@@ -184,11 +190,11 @@ parsing are real. Microseconds per operation.
 
 The Rust advantage is largely **fixed per-call overhead**: on a 3 KB payload it shrinks to
 1.2x because materialising the parsed result as Python objects dominates either way. infy's
-parser is a low-overhead, fast-on-small-and-fenced story — not a large-JSON throughput story.
+parser is a low-overhead, fast-on-small-and-fenced story, not a large-JSON throughput story.
 
 ---
 
-## Governance overhead — is it free enough to leave on?
+## Governance overhead: is it free enough to leave on?
 
 infy's governance layer (policy + risk + tamper-evident audit) runs **in-process** at the tool
 chokepoint, so the question is whether it is cheap enough to enable on every agent. Measured on a
@@ -202,16 +208,16 @@ byte-identical output:
 | LangChain (ungoverned) | 980 ms | 54.6 MB | 8.3 ms |
 | LangChain + middleware | 967 ms | 54.8 MB | 9.2 ms |
 
-- **infy governance overhead: ≈ +50 µs per tool call** (+230–285 µs/run for 5 calls), stable
-  across runs. That dominates the *mocked* 19 µs run — but against the ~1–2 s real LLM call it
+- **infy governance overhead: ≈ +50 µs per tool call** (+230 to 285 µs/run for 5 calls), stable
+  across runs. That dominates the *mocked* 19 µs run, but against the ~1 to 2 s real LLM call it
   guards, it is **~0.003%** overhead. Governance is free enough to leave on for every agent.
 - **infy + governance vs LangChain + equivalent middleware** (same policy + audit work):
-  **~6–9× lighter cold start, ~5× lighter RAM, ~38–43× faster per run** — and infy's governance
+  **~6 to 9x lighter cold start, ~5x lighter RAM, ~38 to 43x faster per run**, and infy's governance
   does *more* per call (risk tiering + a hash-chained audit event), because enforcement is a plain
   in-process function call, not a graph step.
 
-Honest caveat: the LangChain middleware delta (+0.3–2.6 ms/run) is real but lost in the run-to-run
-noise of its ~8–13 ms graph execution, so it is reported, not relied on. Full harness and threat
+Honest caveat: the LangChain middleware delta (+0.3 to 2.6 ms/run) is real but lost in the run-to-run
+noise of its ~8 to 13 ms graph execution, so it is reported, not relied on. Full harness and threat
 model: [`infy/governance/README.md`](infy/governance/README.md).
 
 ---
@@ -230,7 +236,7 @@ Project 04 (the browser-automation agent) is the honest counter-example. Per LLM
 infy was net-faster per step (frozen dataclasses construct 3.3x faster than validated
 pydantic models) but **lost on validated parsing**: the incumbent used `pydantic-core`'s
 `model_validate_json` (fused single-pass parse+validate), which beat infy's
-`JsonParser → dict → construct` two-pass. **This has since been addressed** — infy's
+`JsonParser → dict → construct` two-pass. **This has since been addressed**, infy's
 `with_structured_output` now delegates to `pydantic-core.model_validate_json` when given a
 pydantic model, taking the same fused path.
 
@@ -238,10 +244,10 @@ pydantic model, taking the same fused path.
 
 ## The honest caveat
 
-The per-invocation overhead multiples (12x–93x) measure a real CPU cost, but they describe the
-*framework's* time, not the request's. Once a live model call is in the loop, a ~1–3 s network
+The per-invocation overhead multiples (12x to 93x) measure a real CPU cost, but they describe the
+*framework's* time, not the request's. Once a live model call is in the loop, a ~1 to 3 s network
 round-trip dominates, and end-to-end wall-clock between frameworks is effectively at parity
-(measured: 1.05x–1.14x).
+(measured: 1.05x to 1.14x).
 
 ```mermaid
 flowchart LR
@@ -253,7 +259,7 @@ flowchart LR
     end
 ```
 
-What survives into production is **cold start** and **memory footprint** — costs paid on every
+What survives into production is **cold start** and **memory footprint**, costs paid on every
 request and per running agent. That is why infy targets serverless, edge, and high-density
 multi-tenant deployments, where those are the dominant terms.
 
