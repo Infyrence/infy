@@ -14,7 +14,7 @@ import asyncio
 import contextlib
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from infy.messages import AIMessage, Message, ToolMessage
@@ -23,6 +23,8 @@ from infy.tools import Tool
 
 if TYPE_CHECKING:
     from infy.governance import Governance
+    from infy.governance.approval import PendingApproval
+    from infy.governance.types import ToolDecision
 
 
 @dataclass
@@ -33,6 +35,11 @@ class AgentResult:
     response: AIMessage
     iterations: int = 0
     tool_calls_made: int = 0
+    # Durable approval: "completed" or "suspended". A suspended run is waiting on the human
+    # decisions in ``pending_approvals`` and continues via DurableAgent.resume(run_id, ...).
+    status: str = "completed"
+    pending_approvals: list[PendingApproval] = field(default_factory=list)
+    run_id: str | None = None
 
 
 def create_agent(
@@ -171,6 +178,34 @@ def _run_tool(
             )
         if not decision.allowed:
             return ToolMessage(content=decision.message, tool_call_id=tc.id, status="error")
+    try:
+        result = ToolMessage(content=str(tool.invoke(tc.args)), tool_call_id=tc.id)
+    except Exception as e:
+        result = ToolMessage(content=f"Error: {e}", tool_call_id=tc.id, status="error")
+    if governance is not None:
+        with contextlib.suppress(Exception):  # post-call audit is best-effort
+            result = governance.after_tool(tool, result)
+    return result
+
+
+def _run_tool_decided(
+    tc: Any,
+    tool_map: dict[str, Tool],
+    governance: Governance | None,
+    decision: ToolDecision | None,
+) -> ToolMessage:
+    """Execute a tool call whose governance decision was ALREADY made (durable pre-authorization),
+    so an entire batch is decided before any side effect runs. Same guarantees as ``_run_tool``:
+    exactly one ToolMessage out, and fail-closed when the decision is missing or not allowed."""
+    tool = tool_map.get(tc.name)
+    if tool is None:
+        if governance is not None:
+            with contextlib.suppress(Exception):
+                governance.on_unknown_tool(tc.name)
+        return ToolMessage(content=f"Unknown tool: {tc.name}", tool_call_id=tc.id, status="error")
+    if decision is None or not decision.allowed:
+        message = decision.message if decision is not None else "Blocked: no decision recorded"
+        return ToolMessage(content=message, tool_call_id=tc.id, status="error")
     try:
         result = ToolMessage(content=str(tool.invoke(tc.args)), tool_call_id=tc.id)
     except Exception as e:

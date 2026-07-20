@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
-from infy.governance.approval import ApprovalRequest, Approver, DenyAll
+from infy.governance.approval import ApprovalRequest, ApprovalRequired, Approver, DenyAll
 from infy.governance.audit import AuditLog
 from infy.governance.engine import PolicyEngine
 from infy.governance.risk import RiskEngine
@@ -51,6 +51,10 @@ class Governance:
     def before_tool(self, tool: Tool, args: dict[str, Any]) -> ToolDecision:
         try:
             return self._authorize(tool, args)
+        except (
+            ApprovalRequired
+        ):  # not an error: the run must SUSPEND for a human. Let it propagate.
+            raise
         except Exception as exc:  # ANY governance error fails closed (deny), and is audited
             self._log(
                 "invoke_tool",
@@ -80,6 +84,8 @@ class Governance:
                 approved = self.approver.review(
                     ApprovalRequest(tool.name, args, tier.value, "policy/risk requires approval")
                 )
+            except ApprovalRequired:  # a durable approver defers to a human: suspend, do not reject
+                raise
             except Exception as exc:  # an approver that errors is treated as a rejection
                 self._log(
                     "invoke_tool",

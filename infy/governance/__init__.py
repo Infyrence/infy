@@ -9,12 +9,20 @@ Not imported by ``infy`` core — the zero-dependency core stays untouched until
 
 from infy.governance.approval import (
     ApprovalRequest,
+    ApprovalRequired,
+    ApprovalStore,
     Approver,
     AutoApprove,
     CallbackApprover,
     DenyAll,
+    DurableApprover,
+    InMemoryApprovalStore,
+    PendingApproval,
+    fingerprint,
+    run_scope,
 )
 from infy.governance.audit import AuditEvent, AuditLog
+from infy.governance.durable import DurableAgent
 from infy.governance.engine import Policy, PolicyEngine, PythonPolicyEngine, Rule
 from infy.governance.governance import Governance
 from infy.governance.risk import RiskEngine
@@ -29,6 +37,8 @@ from infy.governance.types import (
 
 __all__ = [
     "ApprovalRequest",
+    "ApprovalRequired",
+    "ApprovalStore",
     "Approver",
     "AuditEvent",
     "AuditLog",
@@ -37,9 +47,13 @@ __all__ = [
     "CallbackApprover",
     "Decision",
     "DenyAll",
+    "DurableAgent",
+    "DurableApprover",
     "Effect",
     "Governance",
+    "InMemoryApprovalStore",
     "Obligation",
+    "PendingApproval",
     "Policy",
     "PolicyEngine",
     "PythonPolicyEngine",
@@ -47,4 +61,6 @@ __all__ = [
     "RiskTier",
     "Rule",
     "ToolDecision",
+    "fingerprint",
+    "run_scope",
 ]
