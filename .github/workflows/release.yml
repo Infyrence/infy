@@ -76,3 +76,7 @@ jobs:
         with:
           packages-dir: dist
           repository-url: ${{ contains(github.ref_name, '-') && 'https://test.pypi.org/legacy/' || 'https://upload.pypi.org/legacy/' }}
+          # Re-pushing a tag fires the workflow twice; the second upload then reds the
+          # dashboard with "file name reuse" for artifacts that published perfectly well the
+          # first time. Treat an already-present file as done rather than as a failure.
+          skip-existing: true
