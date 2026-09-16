@@ -36,8 +36,11 @@ all = ["openai>=1.0.0", "anthropic>=0.30.0", "ollama>=0.3.0", "google-genai>=1.0
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
-    "ruff>=0.5.0",
-    "mypy>=1.10.0",
+    # Linters are pinned to a minor series on purpose. Unpinned, CI silently installs a
+    # newer ruff than the contributor has, and a formatting rule that did not exist locally
+    # fails the build on green code. Bump these deliberately, not by surprise.
+    "ruff>=0.15.18,<0.16",
+    "mypy>=2.1,<3",
     "pydantic>=2.0.0",
 ]
 
@@ -61,6 +64,11 @@ exclude = ["tests/**", "examples/**", "core-rust/target/**", "**/__pycache__/**"
 [tool.ruff]
 target-version = "py310"
 line-length = 100
+# Newer ruff formats Python code blocks inside Markdown by default. The module READMEs use
+# hand-aligned trailing comments that the formatter normalises away, and CI passes `infy` as
+# a directory, so the docs get swept in and the build fails on prose. Exclude them:
+# `ruff format` is for source, and this keeps local and CI identical across ruff versions.
+extend-exclude = ["*.md"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "SIM"]

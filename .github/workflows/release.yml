@@ -23,7 +23,9 @@ jobs:
           - { os: ubuntu-latest, target: x86_64 }
           - { os: ubuntu-latest, target: aarch64 }
           - { os: macos-latest, target: aarch64 }
-          - { os: macos-13, target: x86_64 }
+          # Intel macOS: macos-13 is being retired and no longer gets scheduled, which
+          # hangs the whole release, since `publish` needs every matrix leg.
+          - { os: macos-15-intel, target: x86_64 }
           - { os: windows-latest, target: x64 }
     steps:
       - uses: actions/checkout@v4
