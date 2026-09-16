@@ -89,3 +89,12 @@ module = [
     "smolagents", "smolagents.*", "openhands.*", "langchain_core.*", "langchain.*",
 ]
 ignore_missing_imports = true
+
+# Whether a `type: ignore` in a provider is "unused" depends on whether that provider's SDK
+# happens to be installed: with the SDK absent the call site is Any and the ignore is dead,
+# with it present the ignore is load-bearing. Under `strict` that makes the build fail in one
+# environment and pass in the other for identical code, so the check is switched off here and
+# only here. Everything outside the provider boundary keeps it.
+[[tool.mypy.overrides]]
+module = ["infy.providers.*"]
+warn_unused_ignores = false
