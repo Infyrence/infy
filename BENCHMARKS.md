@@ -222,6 +222,40 @@ model: [`infy/governance/README.md`](infy/governance/README.md).
 
 ---
 
+## Tool routing: what does a large catalogue cost?
+
+Every benchmark above measures CPU and memory. This one measures **context**, the cost a large
+tool catalogue imposes on every model call. One agent run = a single tool call against a
+**120-tool catalogue** (twelve real service domains x ten operations, four-property typed schemas),
+mocked and deterministic, all arms reaching the identical answer. Token counts are measured off
+the real serialised payload with infy's `count_tokens` (a fast approximation, not a provider BPE).
+
+| arm | turn-1 tokens | tool tokens/run | pool tokens/run | total | latency/run |
+| --- | --: | --: | --: | --: | --: |
+| static (all 120 schemas) | 23,917 | 47,834 | 0 | **47,834** | 5,994 µs |
+| routed (top-5) | 1,000 | 2,000 | 3,532 | **5,532** | 1,187 µs |
+| routed (top-3) | 600 | 1,200 | 3,532 | **4,732** | 995 µs |
+
+- **8.6x less context** at top-5 (88.4% saved), 10.1x at top-3 — and the static figure is a floor,
+  since the schemas are re-sent on every iteration.
+- **The summary pool is not free.** At 1,766 tokens per turn it is 64% of the routed arm's total.
+  The saving comes from the schemas (47,834 → 2,000), not from the pool being cheap.
+- **Routing is also faster, not a latency trade: 5x per run.** Serialising 120 schemas twice costs
+  more than ranking 120 tools and serialising 5. Decomposed: **297 µs per selection** (BM25 over an
+  inverted index), 0.2 µs to emit the pool (rendered once), and a one-time ~4 ms index build at
+  startup. Against the ~1–2 s LLM call it feeds, selection is **~0.02%** overhead.
+- **Cold start and RSS are unchanged** (356 vs 355 ms, 9.2 vs 9.3 MB — run-to-run noise). Routing
+  changes what goes in the prompt, not what gets imported.
+
+Honest caveats: this is a single-tool-call scenario, so 8.6x is the favourable end of a real range
+— a run needing tools from several domains promotes more of them and saves less. Below roughly
+15–20 tools the pool costs more than the schemas it replaces and routing is a net loss. And a
+paraphrased query with no lexical overlap can miss, which is what `always=` pinning, the prose
+escape hatch, and the optional dense path exist to cover. Full harness and the rest of the
+caveats: [`tool_routing_bench/`](tool_routing_bench/).
+
+---
+
 ## Where infy loses (and what changed)
 
 Project 04 (the browser-automation agent) is the honest counter-example. Per LLM step:

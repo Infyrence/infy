@@ -1,7 +1,12 @@
 [package]
 name = "infy_core"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
+description = "SIMD-accelerated hot paths (JSON parsing, cosine similarity, tokenisation) for the infy LLM framework."
+license = "Apache-2.0"
+repository = "https://github.com/Infyrence/infy"
+# Not published to crates.io: this crate is vendored into the infy wheel.
+publish = false
 
 [lib]
 name = "infy_core"

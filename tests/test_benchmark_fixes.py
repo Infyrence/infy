@@ -289,6 +289,22 @@ class TestProviderWiringRegression:
         assert "SCHEMA-INSTRUCTION" in system_text
         assert "USER-SYSTEM" in system_text
 
+    def test_anthropic_merges_multiple_system_messages(self):
+        """Regression: Anthropic hoists system messages into a single top-level field, and
+        used to keep only the last one — silently dropping the caller's system_prompt as soon
+        as the agent loop injected a second (a tool summary pool, or an objective anchor)."""
+        pytest.importorskip("anthropic")
+        from infy.providers.anthropic import AnthropicChat
+
+        msgs = [
+            SystemMessage(content="USER-SYSTEM"),
+            SystemMessage(content="INJECTED-ANCHOR"),
+            HumanMessage(content="hi"),
+        ]
+        system_text, _msg_list = AnthropicChat("claude-sonnet-5")._convert_messages(msgs)
+        assert "USER-SYSTEM" in system_text
+        assert "INJECTED-ANCHOR" in system_text
+
     def test_all_providers_have_async_methods(self):
         """Regression: every provider must expose agenerate + astream (async graphs use them)."""
         from infy.providers.anthropic import AnthropicChat

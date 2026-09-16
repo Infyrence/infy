@@ -136,7 +136,10 @@ class AnthropicChat:
         msg_list: list[dict[str, Any]] = []
         for m in messages:
             if isinstance(m, SystemMessage):
-                system_text = m.text
+                # Merge (don't overwrite): the agent loop legitimately emits more than one
+                # system message — a caller's system_prompt plus an injected tool summary
+                # pool or objective anchor — and last-wins silently drops the caller's.
+                system_text = f"{system_text}\n\n{m.text}" if system_text else m.text
             elif hasattr(m, "tool_call_id"):
                 msg_list.append(
                     {

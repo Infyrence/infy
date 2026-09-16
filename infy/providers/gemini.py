@@ -159,7 +159,7 @@ class GeminiChat:
             if isinstance(msg, SystemMessage):
                 # Merge (don't overwrite) so an injected schema/system instruction is
                 # not clobbered by a caller-supplied system message later in the list.
-                system_text = f"{system_text}\n{msg.text}" if system_text else msg.text
+                system_text = f"{system_text}\n\n{msg.text}" if system_text else msg.text
             elif isinstance(msg, AIMessage):
                 parts: list[dict[str, Any]] = []
                 if msg.content:

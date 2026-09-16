@@ -5,7 +5,7 @@
 ![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)
 [![License](https://img.shields.io/badge/license-Apache--2.0-green)](LICENSE)
 ![Type-checked](https://img.shields.io/badge/mypy-strict-blue)
-![Tests](https://img.shields.io/badge/tests-356%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-411%20passing-brightgreen)
 ![Status](https://img.shields.io/badge/status-alpha-orange)
 
 infy is a from-scratch runtime for LLM applications and agentic systems. The Python core has **no third-party runtime dependencies**; the hot paths (JSON parsing, similarity, tokenization) are accelerated by a compiled Rust extension that degrades gracefully to pure Python when it is absent. It ships a complete chat-model abstraction, composable runnables, structured output, tool-calling agents, and a Pregel-style stateful graph executor with checkpointing and human-in-the-loop interrupts, sync and async throughout.
@@ -43,7 +43,7 @@ pip install "infy[all]"          # all providers
 
 Requires Python 3.10+.
 
-> **Alpha:** until the first tagged PyPI release, install from source. See [CONTRIBUTING.md](CONTRIBUTING.md) (`pip install -e ".[dev]" && maturin develop --release`).
+> **Alpha:** the API may change between minor releases until 1.0. To work on infy itself, install from source — see [CONTRIBUTING.md](CONTRIBUTING.md) (`pip install -e ".[dev]" && maturin develop --release`).
 
 ---
 
@@ -86,6 +86,68 @@ print(result.iterations, result.tool_calls_made)
 ```
 
 `create_agent` is a tight ReAct loop (tool calls executed in parallel by default). For control flow that branches, loops, persists, or pauses, use the [graph runtime](#the-graph-runtime).
+
+### Large catalogues: routing instead of injecting
+
+Sending every tool schema on every turn is the dominant context cost of a large catalogue, and it is paid on every iteration of the loop. An optional `ToolRouter` keeps a one-line summary of the whole catalogue resident in the prompt prefix — byte-stable across turns, so it stays cacheable — and promotes the full schema of only the tools a turn actually needs.
+
+```python
+from infy import ToolRouter, create_agent
+
+router = ToolRouter(tools=ALL_TOOLS, top_k=5, always=["search"])
+agent = create_agent(model, ALL_TOOLS, tool_router=router)
+```
+
+Ranking is BM25 over an inverted index of tool names and descriptions, with no third-party dependency; pass `embeddings=` to fuse dense similarity in via Reciprocal Rank Fusion. Promotions are sticky by default, so the tool list only grows within a run. A tool the model names in prose is promoted on the next turn, so nothing in the catalogue is truly out of reach.
+
+On a 120-tool catalogue this cuts tool-payload context **8.6x** (47,834 to 5,532 tokens per run) and runs **5x faster per run**, at ~297 µs per selection — serialising 120 schemas costs more than ranking 120 tools and serialising 5. See [`tool_routing_bench/`](tool_routing_bench/) for the harness and the caveats, including where routing is a net loss.
+
+> Routing is a **context optimisation, not a security boundary.** A tool whose schema was never promoted still executes if the model names it. Withholding a schema makes a call less likely, not impossible — `infy.governance` remains the only authority on what is allowed to run.
+
+### Intent: what the run is for
+
+A long tool-using run drifts. The context fills with schemas and observations, the original request slides away from the model's attention, and the agent optimises whichever sub-problem it met last. It is also how multi-turn prompt injection works: instructions arriving in fetched page text compete with a goal stated once, a hundred thousand tokens ago.
+
+An `Objective` holds that goal as immutable structured state *outside* the message array, and re-states it every turn.
+
+```python
+from infy import Objective, create_agent
+
+objective = Objective(
+    goal="Ship the 1.2 release to staging.",
+    constraints=["Never touch production.", "Stop and ask before any migration."],
+    success_criteria=["Staging serves 1.2", "Smoke tests pass"],
+)
+agent = create_agent(model, tools, objective=objective)
+```
+
+It is rendered at the head of the conversation (primacy) and moved as a single short reminder to just before each model call (recency). Exactly one reminder exists at a time — the previous is removed, not accumulated — so the cost is flat however long the run goes. `constraints` and `success_criteria` are structured rather than prose because they are what a summary drops first and what makes an objective checkable.
+
+> **Provider caveat.** OpenAI and Ollama take system messages inline, so the reminder genuinely lands last. Anthropic and Gemini hoist system messages into a separate top-level field, so there it merges to the end of the *system block* instead. The primacy half holds everywhere; on those two, don't expect the recency effect.
+
+### Memory: what is known, and when it was true
+
+`BufferMemory`, `TokenLimitedMemory` and `SummaryMemory` differ only in what they throw away. Two additions cover the cases agents actually hit:
+
+**`FactSheetMemory`** keeps recent turns verbatim and folds older tool output into a flat list of established facts. For tool-using agents most of the context is observations, where trimming the oldest loses the finding and narrating it spends a paragraph to carry a number. With a model it extracts facts; without one it records tool results verbatim — lossier, but deterministic, offline, and a working fallback when extraction fails.
+
+**`BiTemporalMemory`** stores facts on two independent time axes, which is what lets it tell two situations apart that a single timeline cannot:
+
+```python
+from infy import BiTemporalMemory
+
+mem = BiTemporalMemory()
+mem.assert_fact("user", "lives_in", "New York")
+mem.assert_fact("user", "lives_in", "London")      # the world changed
+
+mem.get("user", "lives_in")                        # "London"
+mem.as_of(valid_time=before_the_move)              # still "New York" — history isn't rewritten
+
+mem.correct("user", "employer", "Globex")          # we recorded the wrong value
+mem.as_of(transaction_time=when_we_acted)          # what we believed at the time we acted
+```
+
+`retract` means *the world changed* — the old fact stays true for its interval. `correct` means *we were wrong* — the record leaves current belief entirely but stays in `history()`, because an agent that can quietly erase its own mistakes cannot be audited. `BiTemporalStore` is a protocol seam, so a durable backend drops in without touching calling code.
 
 ---
 
@@ -359,7 +421,7 @@ Commercial features attach behind the same open protocol seams (`PolicyEngine`, 
 
 ## Project status
 
-Alpha. The model, runnable, structured-output, tool, agent, graph, governance, and integration APIs are stable and covered by the test suite (strict `mypy`, `ruff`, 356 passing, 8 skipped without optional SDKs). Surface area is deliberately smaller than LangChain: there is no prompt-template DSL and the provider catalogue is focused rather than exhaustive. Treat minor releases as potentially breaking until 1.0.
+Alpha. The model, runnable, structured-output, tool, agent, graph, governance, routing, intent, memory, and integration APIs are stable and covered by the test suite (strict `mypy`, `ruff`, 411 passing, 10 skipped without optional SDKs). Surface area is deliberately smaller than LangChain: there is no prompt-template DSL and the provider catalogue is focused rather than exhaustive. Treat minor releases as potentially breaking until 1.0.
 
 Deferred behind the stable protocol seams, until a design partner pulls them: an embedded Cedar engine compiled into `infy_core`, a YAML-to-policy DSL, taint and provenance with egress DLP for prompt-injection defense, plan-level authorization, and capability attenuation across sub-agents.
 

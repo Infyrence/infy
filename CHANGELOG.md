@@ -7,6 +7,11 @@ breaking changes.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-16
+
+First release published to PyPI. `0.1.0` was an internal milestone and was never tagged or
+uploaded, so `pip install infy` starts here.
+
 ### Added
 
 - **Governance (`infy.governance`)** — an optional, in-process control plane for the agent loop:
@@ -21,6 +26,41 @@ breaking changes.
     core loop is unchanged when `governance` is omitted.
 - Optional risk metadata on `Tool` and the `@tool` decorator (`risk_tier`, `verb`, `side_effect`, …).
 - `examples/governance_demo.py` and a governance overhead benchmark.
+- **Tool routing (`infy.tool_router`)** — an optional `ToolRouter` for large catalogues. Keeps a
+  compact, turn-stable one-line summary of every tool resident in the prompt prefix and promotes
+  the full JSON Schema of only the top-k relevant tools per turn:
+  - dependency-free hybrid ranking — BM25 over an inverted index of tool names and descriptions,
+    optionally fused with dense embedding similarity by `reciprocal_rank_fusion` (RRF, k=60);
+  - `always=[...]` pinning, `sticky` monotonic promotion (keeps the tool list append-only so a
+    provider's prompt cache keeps hitting), and an escape hatch — a tool named in the model's
+    prose is promoted on the next turn;
+  - opt-in via `create_agent(..., tool_router=...)`. The loop is unchanged when omitted.
+  - Measured on a 120-tool catalogue: **8.6x less tool-payload context and 5x faster per run**,
+    at ~297 µs per selection. Routing is a **context optimisation, not a security boundary** — an
+    unpromoted tool still executes if the model names it; `infy.governance` remains the authority.
+- A tool-routing benchmark (`tool_routing_bench/`).
+- **Intent structure (`infy.intent`)** — `Objective`: an immutable, structured statement of what
+  a run is for (`goal`, `constraints`, `success_criteria`), held outside the message array and
+  re-stated every turn to fight goal drift and multi-turn prompt injection. Rendered at the head
+  of the conversation and moved as a single short reminder to just before each model call; the
+  previous reminder is removed rather than accumulated, so the cost is flat. Opt-in via
+  `create_agent(..., objective=...)`; the loop is unchanged when omitted.
+- **`FactSheetMemory` (`infy.memory`)** — keeps recent turns verbatim and folds older tool output
+  into a de-duplicated, bounded list of established facts. Uses a model to extract when given
+  one, and falls back to recording tool results verbatim when not (or when extraction fails).
+- **Bi-temporal memory (`infy.temporal`)** — `BiTemporalMemory` / `Fact`, storing facts on both
+  valid time (when it was true in the world) and transaction time (when we believed it). Makes
+  `retract` ("the world changed", history preserved) distinct from `correct` ("we were wrong",
+  removed from belief but kept in `history()`), and supports `as_of` queries on either axis, so
+  "what did we believe when we acted?" is answerable. `BiTemporalStore` is a protocol seam for a
+  durable backend.
+
+### Fixed
+
+- **Anthropic provider dropped all but the last system message.** `_convert_messages` assigned
+  rather than merged, so once the agent loop injected a second system message (a tool summary
+  pool or an objective anchor) the caller's `system_prompt` was silently discarded. Now merged,
+  matching the Gemini provider, with a regression test alongside the existing Gemini one.
 
 ### Changed
 
@@ -47,5 +87,6 @@ breaking changes.
 - `infy_core` — a Rust (PyO3, `abi3`) SIMD extension for JSON parsing, cosine similarity, and
   tokenisation, with graceful pure-Python fallback.
 
-[Unreleased]: https://github.com/Infyrence/infy/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Infyrence/infy/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Infyrence/infy/releases/tag/v0.2.0
 [0.1.0]: https://github.com/Infyrence/infy/releases/tag/v0.1.0

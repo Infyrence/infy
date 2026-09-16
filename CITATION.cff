@@ -7,6 +7,8 @@ abstract: >-
   executor, and an optional in-process governance layer (policy, risk, approval, tamper-evident
   audit).
 type: software
+version: 0.2.0
+date-released: "2026-09-16"
 authors:
   - name: "Infyrence"
 license: Apache-2.0
