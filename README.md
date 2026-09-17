@@ -221,9 +221,12 @@ A denied action never runs; the model receives the block reason and adapts. Ever
 
 | Framework | Adapter | Status |
 | --- | --- | --- |
+| Agno | `infy.integrations.agno.govern_hook` | Tested against the library, runnable demo |
 | smolagents | `infy.integrations.smolagents.govern` | Tested against the library, runnable demo |
 | LangChain | `infy.integrations.langchain.govern` | Tested against the library, runnable demo |
 | OpenHands | `infy.integrations.openhands.build_analyzer` | Adapter for its `SecurityAnalyzer` hook |
+
+Agno is the exception to the wrap-the-tools shape above: it has a first-class `tool_hooks` seam, so `govern_hook(gov)` passed to `Agent(tool_hooks=[...])` governs every tool the agent runs in-process — plain callables, `Function` objects, and every function of a `Toolkit` — in one line. Use `agovern_hook` for `arun`. See the module docstring for the scope boundary and the durable-approval caveat.
 
 Runnable demos, including a real smolagents agent that has a destructive action denied and a deploy paused for a human, are in [`examples/`](examples/).
 

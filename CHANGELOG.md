@@ -7,6 +7,15 @@ breaking changes.
 
 ## [Unreleased]
 
+### Added
+
+- **Agno integration (`infy.integrations.agno`)** — `govern_hook` / `agovern_hook` build an Agno
+  `tool_hook` that routes every tool call through infy governance. A denied or unapproved action
+  never reaches the entrypoint; the model receives the block reason and adapts, and every decision
+  lands in the tamper-evident audit chain. One agent-level hook covers plain callables, `Function`
+  objects and every function of a `Toolkit`. Tested against the library, with
+  `examples/agno_governance_demo.py`.
+
 ## [0.2.0] - 2026-09-16
 
 First release published to PyPI. `0.1.0` was an internal milestone and was never tagged or
