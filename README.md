@@ -221,12 +221,22 @@ A denied action never runs; the model receives the block reason and adapts. Ever
 
 | Framework | Adapter | Status |
 | --- | --- | --- |
+| MCP (any client) | `infy.integrations.mcp.GovernedSession` | Tested against a live server, runnable demo |
 | Agno | `infy.integrations.agno.govern_hook` | Tested against the library, runnable demo |
 | smolagents | `infy.integrations.smolagents.govern` | Tested against the library, runnable demo |
 | LangChain | `infy.integrations.langchain.govern` | Tested against the library, runnable demo |
 | OpenHands | `infy.integrations.openhands.build_analyzer` | Adapter for its `SecurityAnalyzer` hook |
 
 Agno is the exception to the wrap-the-tools shape above: it has a first-class `tool_hooks` seam, so `govern_hook(gov)` passed to `Agent(tool_hooks=[...])` governs every tool the agent runs in-process — plain callables, `Function` objects, and every function of a `Toolkit` — in one line. Use `agovern_hook` for `arun`. See the module docstring for the scope boundary and the durable-approval caveat.
+
+**MCP is framework-independent.** `GovernedSession` wraps an `mcp.ClientSession`, so it governs whatever client you already have, on any server it talks to:
+
+```python
+session = GovernedSession(raw_session, gov, server="partner-tools")
+await session.call_tool("delete_database", {...})   # policy-checked, audited, or blocked
+```
+
+This is *client-side* governance, which is a different position from an MCP gateway: it protects your agent from the tools it was handed, rather than protecting a server from callers. Two consequences follow. Tool annotations (`readOnlyHint`, `destructiveHint`, …) are unverified server claims, so they may only **raise** a tool's risk, never lower it, unless you pass `trust_annotations=True` for a server you have actually vetted — a hostile server cannot talk its way down to LOW. And `list_tools` digests every tool's description, schema and annotations, so a server that rewrites a description after it was approved (tool poisoning) leaves a provable record in the hash chain.
 
 Runnable demos, including a real smolagents agent that has a destructive action denied and a deploy paused for a human, are in [`examples/`](examples/).
 

@@ -87,6 +87,7 @@ strict = true
 module = [
     "openai.*", "anthropic.*", "ollama.*", "google.*",
     "smolagents", "smolagents.*", "openhands.*", "langchain_core.*", "langchain.*",
+    "mcp", "mcp.*",
 ]
 ignore_missing_imports = true
 

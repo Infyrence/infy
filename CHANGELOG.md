@@ -9,6 +9,18 @@ breaking changes.
 
 ### Added
 
+- **MCP integration (`infy.integrations.mcp`)** — `GovernedSession` wraps an `mcp.ClientSession`
+  and gates `ClientSession.call_tool`, the single chokepoint every MCP tool call passes through, so
+  any client is governed on any server without changing the client. A denied call never crosses the
+  transport and the model receives a protocol-correct `CallToolResult(is_error=True)`. Policy and
+  audit use server-qualified names (`"<server>/<tool>"`) because two servers may expose the same
+  tool name. Tool annotations are treated as the unverified server claims the spec says they are:
+  they may escalate a tool's risk (`destructive_hint` → CRITICAL) but never lower it below the
+  conservative default unless `trust_annotations=True` names a vetted server. `list_tools` digests
+  each tool's description, schema and annotations and records definition drift, so tool poisoning
+  leaves a provable trail. Tested end-to-end against a live `MCPServer` over the SDK's in-memory
+  transport, with `examples/mcp_governance_demo.py`.
+
 - **Agno integration (`infy.integrations.agno`)** — `govern_hook` / `agovern_hook` build an Agno
   `tool_hook` that routes every tool call through infy governance. A denied or unapproved action
   never reaches the entrypoint; the model receives the block reason and adapts, and every decision
