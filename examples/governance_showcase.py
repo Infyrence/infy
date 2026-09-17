@@ -260,7 +260,7 @@ def main() -> None:
     for e in decisions:
         colour = RED if e.decision == "deny" else GREEN if e.decision == "allow" else DIM
         say(
-            f"  {DIM}{e.seq:>2}{RESET}  {colour}{e.decision:<8}{RESET}{e.action:<13}"
+            f"  {DIM}{e.seq:>2}{RESET}  {colour}{e.decision:<9}{RESET}{e.action:<13}"
             f"{e.resource:<17}{DIM}{e.risk_tier:<9}{e.hash[:12]}{RESET}",
             0.3,
         )
